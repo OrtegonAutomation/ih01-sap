@@ -129,16 +129,6 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
 }
 #file-list { display:flex; flex-direction:column; gap:8px; }
 
-/* ─── X-FLAG INFO ─────────────────────────────────────── */
-#xflag-info {
-  display:none; gap:12px; align-items:flex-start;
-  background:var(--amber-lo); border:1px solid var(--amber-hi);
-  border-radius:var(--r); padding:13px 16px;
-  font-size:12px; color:oklch(38% 0.06 68);
-  animation:fadeUp .35s var(--eox) both;
-}
-#xflag-info strong { display:block; margin-bottom:3px; font-size:13px; color:oklch(28% 0.07 68); }
-
 /* ─── FILE CARDS ──────────────────────────────────────── */
 .fcard {
   background:var(--surface); border-radius:var(--r);
@@ -148,7 +138,6 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
   transition:box-shadow .2s, border-color .2s;
 }
 .fcard:hover { box-shadow:var(--sh); }
-.fcard.fc-x { border-left:3px solid var(--amber); }
 .fcard-ico { width:38px; height:38px; flex-shrink:0; background:var(--bg-2); border-radius:var(--r-sm); display:flex; align-items:center; justify-content:center; }
 .fcard-info { flex:1; min-width:0; }
 .fcard-name { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -156,8 +145,6 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
 .fcard-chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
 .chip { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:600; }
 .chip-n   { background:var(--bg-2); color:var(--text-2); }
-.chip-x   { background:var(--amber-lo); color:oklch(36% 0.09 68); }
-.chip-ok  { background:var(--green-lo); color:oklch(34% 0.14 148); }
 .chip-w   { background:var(--orange-lo); color:oklch(36% 0.1 58); }
 .btn-rm {
   background:transparent; color:var(--text-3);
@@ -205,7 +192,6 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
 .tab.on { color:var(--navy); background:var(--surface); border-color:var(--border); border-bottom-color:var(--surface); }
 .tab-n { background:var(--bg-2); color:var(--text-3); border-radius:20px; padding:1px 7px; font-size:10px; font-weight:700; }
 .tab.on .tab-n { background:var(--amber-lo); color:oklch(36% 0.1 68); }
-.tab-dot { width:6px; height:6px; background:var(--amber); border-radius:50%; animation:pulse 2s ease-in-out infinite; }
 
 /* ─── TABLE SECTION ───────────────────────────────────── */
 #tsec { background:var(--surface); border-radius:0 0 var(--r-lg) var(--r-lg); border:1px solid var(--border); border-top:none; overflow:hidden; box-shadow:var(--sh); animation:scaleIn .35s var(--eox) both; }
@@ -223,14 +209,6 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
 }
 #sinput:focus { border-color:var(--navy-3); box-shadow:0 0 0 3px oklch(22% 0.04 252 / 10%); }
 .fsel { padding:7px 10px; border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface); font-size:12px; font-family:inherit; color:var(--text); outline:none; cursor:pointer; }
-.togx {
-  display:inline-flex; align-items:center; gap:6px; padding:6px 11px;
-  border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface);
-  font-size:12px; color:var(--text-2); cursor:pointer; user-select:none;
-  transition:background .2s, border-color .2s, color .2s;
-}
-.togx:has(input:checked) { background:var(--amber-lo); border-color:var(--amber-hi); color:oklch(34% 0.09 68); }
-.togx input { display:none; }
 #rowcnt { margin-left:auto; font-size:11px; color:var(--text-3); white-space:nowrap; }
 
 /* Table */
@@ -250,8 +228,6 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
 .ths { margin-left:3px; opacity:.4; font-size:9px; }
 #dtable tbody tr { border-bottom:1px solid var(--bg-2); transition:background .1s; }
 #dtable tbody tr:hover { background:var(--bg); }
-#dtable tbody tr.rx { background:oklch(97% 0.04 68); }
-#dtable tbody tr.rx:hover { background:oklch(94.5% 0.05 68); }
 #dtable tbody td { padding:7px 12px; vertical-align:middle; border-right:1px solid var(--bg-2); max-width:300px; }
 #dtable tbody td:last-child { border-right:none; }
 .lvl-code { display:block; font-family:'DM Mono',monospace; font-size:10px; font-weight:600; color:var(--navy); background:var(--amber-lo); border:1px solid var(--amber-hi); border-radius:4px; padding:2px 6px; white-space:nowrap; line-height:1.35; width:max-content; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
@@ -271,9 +247,6 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
 
 /* Level pill */
 .lvl { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; background:var(--bg-2); border-radius:50%; font-size:10px; font-weight:700; color:var(--text-3); }
-
-/* X flag */
-.xyes { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700; color:oklch(36% 0.1 68); }
 
 /* Pagination */
 #pag { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-top:1px solid var(--border); background:var(--bg); flex-wrap:wrap; gap:8px; }
@@ -436,7 +409,6 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
   <div id="header-stats">
     <div class="hstat"><span class="hstat-v" id="hs-p">0</span><span class="hstat-l">Plantas</span></div>
     <div class="hstat"><span class="hstat-v" id="hs-r">0</span><span class="hstat-l">Registros</span></div>
-    <div class="hstat"><span class="hstat-v" id="hs-x">0</span><span class="hstat-l">Marcas X</span></div>
   </div>
 </header>
 
@@ -496,17 +468,6 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
     <div id="file-list"></div>
   </div>
 
-  <!-- X-flag info box -->
-  <div id="xflag-info">
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" flex-shrink="0" style="flex-shrink:0;margin-top:1px">
-      <path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 4v5M10 13v1.5" stroke="oklch(54% 0.14 68)" stroke-width="1.8" stroke-linecap="round"/>
-    </svg>
-    <div>
-      <strong>¿Qué significa la columna "X SAP"?</strong>
-      La marca <code>X</code> al inicio de una línea es <em>la propia marca de eliminación de SAP</em>, no un error del parser. Indica que ese ítem está señalado para eliminación o exclusión dentro del sistema IH01. El parser los detecta y muestra correctamente, con fondo resaltado en ámbar para tu revisión.
-    </div>
-  </div>
-
   <!-- Parse warnings -->
   <div id="wsec" class="hidden">
     <details id="wdet">
@@ -552,7 +513,6 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
         <option value="Lista Técnica">Lista Técnica</option>
         <option value="Material">Material</option>
       </select>
-      <label class="togx"><input type="checkbox" id="togx"> Solo marcas X (SAP)</label>
       <span id="rowcnt"></span>
     </div>
 
@@ -818,10 +778,8 @@ const R = (() => {
   function filtered() {
     const q = (document.getElementById('sinput').value || '').trim().toLowerCase();
     const tp = document.getElementById('ftype').value;
-    const ox = document.getElementById('togx').checked;
     let rows = S.tabRows().filter(r => hasFullLevelPath(r));
     if (tp) rows = rows.filter(r => r.tipo === tp);
-    if (ox) rows = rows.filter(r => r.conError);
     if (q)  rows = rows.filter(r =>
       [r.codigo, r.descripcion, r.plantName, r.archivo, ...(r.path || []).flatMap(p => [p.codigo, p.descripcion])]
         .some(v => v && String(v).toLowerCase().includes(q))
@@ -851,15 +809,13 @@ const R = (() => {
     const frag = document.createDocumentFragment();
     slice.forEach((r, i) => {
       const tr = document.createElement('tr');
-      if (r.conError) tr.classList.add('rx');
       tr.style.cssText = `animation:rowIn .22s ${Math.min(i,50)*7}ms var(--eox) both`;
       const cfg = TYPE_CFG[r.tipo] || { cls:'t-?', ico:'', lbl: r.tipo };
       const ico = cfg.ico ? `<svg width="10" height="10"><use href="${cfg.ico}"/></svg>` : '';
-      const xBadge = r.conError ? `<svg width="10" height="10" viewBox="0 0 14 14" fill="none" style="vertical-align:-1px;margin-right:3px;flex-shrink:0"><path d="M7 1L13 12.5H1L7 1z" stroke="oklch(55% 0.14 60)" stroke-width="1.5" stroke-linejoin="round" fill="oklch(93% 0.09 68)"/><path d="M7 6v3M7 10.5v.5" stroke="oklch(45% 0.12 60)" stroke-width="1.5" stroke-linecap="round"/></svg>` : '';
       const cells = cols.map(c => {
         const v = getColValue(r, c.key);
         if (c.kind === 'code') return `<td><span class="lvl-code">${hl(v, q) || '<span class="lvl-empty">—</span>'}</span></td>`;
-        if (c.kind === 'desc') return `<td><span class="lvl-desc">${xBadge}${hl(v, q) || '<span class="lvl-empty">—</span>'}</span></td>`;
+        if (c.kind === 'desc') return `<td><span class="lvl-desc">${hl(v, q) || '<span class="lvl-empty">—</span>'}</span></td>`;
         if (c.kind === 'type') return `<td><span class="tb ${cfg.cls}">${ico}${cfg.lbl}</span></td>`;
         if (c.kind === 'qty') return `<td style="text-align:right;font-family:'DM Mono',monospace;font-size:11px">${esc(v)}</td>`;
         if (c.kind === 'unit') return `<td style="color:var(--text-3)">${esc(v)}</td>`;
@@ -872,10 +828,8 @@ const R = (() => {
     tbody.innerHTML = '';
     tbody.appendChild(frag);
 
-    const xc = rows.filter(r => r.conError).length;
     document.getElementById('rowcnt').innerHTML =
-      `<strong>${fmt(slice.length)}</strong> de <strong>${fmt(total)}</strong>`
-      + (xc ? ` · <span style="color:oklch(38% 0.1 68);font-weight:600">${fmt(xc)} marca${xc>1?'s':''} X</span>` : '');
+      `<strong>${fmt(slice.length)}</strong> de <strong>${fmt(total)}</strong>`;
 
     renderPag(total, S.page, maxP);
   }
@@ -1012,18 +966,17 @@ function countTo(el, target, ms=650) {
    UI REFRESH
 ════════════════════════════════════════════════════════ */
 function updStats() {
-  const all = S.allRows(), xc = all.filter(r=>r.conError).length;
+  const all = S.allRows();
   countTo(document.getElementById('hs-p'), S.files.length);
   countTo(document.getElementById('hs-r'), all.length);
-  countTo(document.getElementById('hs-x'), xc);
 }
 
 function renderCards() {
   const c = document.getElementById('file-list'); c.innerHTML = '';
   S.files.forEach((f,idx) => {
-    const xc = f.rows.filter(r=>r.conError).length, wc = f.warns.length;
+    const wc = f.warns.length;
     const div = document.createElement('div');
-    div.className = 'fcard'+(xc?' fc-x':'');
+    div.className = 'fcard';
     div.style.animationDelay = idx*55+'ms';
     div.innerHTML = `
       <div class="fcard-ico">
@@ -1040,7 +993,6 @@ function renderCards() {
         <div class="fcard-meta">${esc(f.plantCode)} — ${esc(f.plantName)}${f.validFrom?' · Válido: '+f.validFrom:''}</div>
         <div class="fcard-chips">
           <span class="chip chip-n">${fmt(f.rows.length)} registros</span>
-          ${xc?`<span class="chip chip-x">⚑ ${xc} marca${xc>1?'s':''} X</span>`:`<span class="chip chip-ok">✓ Sin marcas X</span>`}
           ${wc?`<span class="chip chip-w">⚠ ${wc} advertencia${wc>1?'s':''}</span>`:''}
         </div>
       </div>
@@ -1055,15 +1007,15 @@ function renderCards() {
 
 function renderTabs() {
   const t = document.getElementById('tabs'); t.innerHTML='';
-  const all = S.allRows(), xall = all.some(r=>r.conError);
-  mkTab('all','🗂 Consolidado',all.length,xall);
-  S.files.forEach(f => mkTab(f.plantCode,f.plantCode,f.rows.length,f.rows.some(r=>r.conError)));
+  const all = S.allRows();
+  mkTab('all','🗂 Consolidado',all.length);
+  S.files.forEach(f => mkTab(f.plantCode,f.plantCode,f.rows.length));
 }
 
-function mkTab(id,lbl,n,hasX) {
+function mkTab(id,lbl,n) {
   const b = document.createElement('button');
   b.className='tab'+(S.tab===id?' on':'');
-  b.innerHTML=`${esc(lbl)}<span class="tab-n">${fmt(n)}</span>${hasX?'<span class="tab-dot" title="Tiene marcas X SAP"></span>':''}`;
+  b.innerHTML=`${esc(lbl)}<span class="tab-n">${fmt(n)}</span>`;
   b.addEventListener('click',()=>{ S.tab=id; refresh(); });
   document.getElementById('tabs').appendChild(b);
 }
@@ -1089,13 +1041,10 @@ function refresh() {
     document.getElementById('dtable').style.display='none';
     document.getElementById('rowcnt').textContent='';
     document.getElementById('pag').classList.add('hidden');
-    document.getElementById('xflag-info').style.display='none';
     updStats(); return;
   }
   if(S.tab!=='all' && !S.files.find(f=>f.plantCode===S.tab)) S.tab='all';
   renderCards(); renderTabs(); renderWarns();
-  const xc = S.allRows().filter(r=>r.conError).length;
-  document.getElementById('xflag-info').style.display = xc>0?'flex':'none';
   updStats(); R.render();
 }
 
@@ -1174,7 +1123,7 @@ document.getElementById('dthead').addEventListener('click', e => {
 /* ════════════════════════════════════════════════════════
    FILTERS
 ════════════════════════════════════════════════════════ */
-['sinput','ftype','togx'].forEach(id => {
+['sinput','ftype'].forEach(id => {
   const el = document.getElementById(id);
   if(el) el.addEventListener(el.type==='checkbox'?'change':'input',()=>{S.page=1;R.render();});
 });
