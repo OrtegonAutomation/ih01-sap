@@ -820,15 +820,23 @@ const TYPE_CFG = {
 
 const LEVEL_LIMIT = 6;
 
-function hasFullLevelPath(row, levelLimit = LEVEL_LIMIT) {
-  if (!row || !Array.isArray(row.path) || row.path.length < levelLimit) return false;
+function normalizePathToLevel(row, levelLimit = LEVEL_LIMIT) {
+  const src = Array.isArray(row?.path) ? row.path : [];
+  const out = [];
+  let lastCode = String(src[0]?.codigo || row?.plantCode || row?.codigo || '-').trim();
+  let lastDesc = String(src[0]?.descripcion || row?.plantName || row?.descripcion || lastCode || '-').trim();
   for (let i = 0; i < levelLimit; i++) {
-    const p = row.path[i];
-    if (!p) return false;
-    if (!String(p.codigo || '').trim()) return false;
-    if (!String(p.descripcion || '').trim()) return false;
+    const p = src[i];
+    if (p) {
+      const c = String(p.codigo || '').trim();
+      const d = String(p.descripcion || '').trim();
+      if (c) lastCode = c;
+      if (d) lastDesc = d;
+      else if (c) lastDesc = c;
+    }
+    out.push({ codigo: lastCode || '-', descripcion: lastDesc || lastCode || '-' });
   }
-  return true;
+  return out;
 }
 
 function buildLevelColumns() {
@@ -849,7 +857,8 @@ function getColValue(row, colKey) {
   const m = /^n(\d+)([cd])$/.exec(colKey);
   if (m) {
     const level = +m[1] - 1;
-    const part = row.path && row.path[level];
+    const np = row.__normPath6 || (row.__normPath6 = normalizePathToLevel(row));
+    const part = np[level];
     return part ? (m[2] === 'c' ? part.codigo : part.descripcion) : '';
   }
   if (colKey === 'cantidad') return row.cantidad === '' ? '' : (+row.cantidad || row.cantidad);
@@ -878,7 +887,7 @@ const R = (() => {
   function filtered() {
     const q = (document.getElementById('sinput').value || '').trim().toLowerCase();
     const tp = document.getElementById('ftype').value;
-    let rows = S.tabRows().filter(r => hasFullLevelPath(r));
+    let rows = S.tabRows();
     if (tp) rows = rows.filter(r => r.tipo === tp);
     if (q)  rows = rows.filter(r =>
       [r.codigo, r.descripcion, r.plantName, r.archivo, ...(r.path || []).flatMap(p => [p.codigo, p.descripcion])]
@@ -978,7 +987,7 @@ function safeName(n) { return String(n).replace(/[\/\\?*\[\]]/g,'-').slice(0,31)
 
 // Structured export: one pair of columns per hierarchy level.
 function buildHierarchyExport(rows) {
-  const baseRows = rows.filter(r => hasFullLevelPath(r));
+  const baseRows = rows;
   const cols = buildLevelColumns();
   const hdr = cols.map(c => c.label);
   const data = baseRows.map(r => [
@@ -1023,15 +1032,15 @@ function exportExcel() {
       sheetCount++;
     }
   }
-  if (!sheetCount) { toast('Sin filas válidas con Nivel 1..6 completo','w'); return; }
+  if (!sheetCount) { toast('Sin filas para exportar','w'); return; }
   XLSX.writeFile(wb, `IH01_${new Date().toISOString().slice(0,10)}.xlsx`);
-  toast(`Excel generado · ${sheetCount} hoja(s) · filtro Nivel 1..6 aplicado`);
+  toast(`Excel generado · ${sheetCount} hoja(s)`);
 }
 
 function exportCSV() {
   const rows = S.tabRows(); if (!rows.length) { toast('No hay datos','w'); return; }
   const { aoa } = buildHierarchyExport(rows);
-  if (aoa.length <= 1) { toast('Sin filas válidas con Nivel 1..6 completo','w'); return; }
+  if (aoa.length <= 1) { toast('Sin filas para exportar','w'); return; }
   const [hdr, ...data] = aoa;
   const esc = v => `"${String(v===null||v===undefined?'':v).replace(/"/g,'""')}"`;
   const csv = [hdr.map(esc).join(','), ...data.map(r => r.map(esc).join(','))].join('\n');
