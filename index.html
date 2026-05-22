@@ -94,6 +94,17 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
 .htitle { color:var(--surface); }
 .htitle h1 { font-size:clamp(14px,2vw,18px); font-weight:700; letter-spacing:-.4px; line-height:1.2; }
 .htitle p  { font-size:11px; color:oklch(68% 0.025 252); margin-top:2px; }
+.htitle-row { display:flex; align-items:center; gap:10px; }
+#tour-header-btn {
+  display:inline-flex; align-items:center; gap:5px;
+  background:oklch(30% 0.05 252); color:var(--surface);
+  border:1px solid oklch(40% 0.06 252);
+  border-radius:var(--r-sm); padding:5px 9px;
+  font-size:11px; font-weight:600;
+  transition:opacity .15s, transform .1s;
+}
+#tour-header-btn:hover { opacity:.9; }
+#tour-header-btn:active { transform:scale(.98); }
 #header-stats { display:flex; align-items:center; border-left:1px solid oklch(32% 0.04 252); margin-left:24px; position:relative; }
 .hstat { padding:0 22px; border-right:1px solid oklch(32% 0.04 252); text-align:center; }
 .hstat-v { font-size:19px; font-weight:700; color:var(--amber); line-height:1; font-feature-settings:'tnum'; display:block; }
@@ -409,7 +420,13 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
       </g>
     </svg>
     <div class="htitle">
-      <h1>IH01 · Árbol de Equipos SAP</h1>
+      <div class="htitle-row">
+        <h1>IH01 · Árbol de Equipos SAP</h1>
+        <button id="tour-header-btn" type="button" title="Iniciar tour guiado">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13V3l12 5-12 5z"/></svg>
+          Tour guiado
+        </button>
+      </div>
       <p>Transacción IH01 · Parser, consolidador y exportador de plantas</p>
     </div>
   </div>
@@ -1238,6 +1255,7 @@ document.getElementById('file-input').addEventListener('change',e=>{processFiles
 document.getElementById('btn-excel').addEventListener('click', exportExcel);
 document.getElementById('btn-csv').addEventListener('click', exportCSV);
 document.getElementById('btn-clear').addEventListener('click', ()=>{ S.clear(); refresh(); toast('Todo limpiado'); });
+document.getElementById('tour-header-btn').addEventListener('click', startGuidedTour);
 
 if (!localStorage.getItem('ih01-tour-v1')) {
   setTimeout(() => {
