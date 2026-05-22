@@ -254,12 +254,10 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
 #dtable tbody tr.rx:hover { background:oklch(94.5% 0.05 68); }
 #dtable tbody td { padding:7px 12px; vertical-align:middle; border-right:1px solid var(--bg-2); max-width:300px; }
 #dtable tbody td:last-child { border-right:none; }
-/* breadcrumb path */
-.ruta-td { max-width:360px; min-width:180px; }
-.bc-wrap { display:flex; flex-wrap:wrap; align-items:center; gap:3px; }
-.bc { font-family:'DM Mono',monospace; font-size:10px; color:var(--text-3); background:var(--bg-2); border-radius:4px; padding:2px 6px; white-space:nowrap; line-height:1.4; }
-.bc:last-child { color:var(--text-2); background:var(--bg-3, oklch(92% 0.015 252)); }
-.bcsep { color:var(--border-2); font-size:10px; line-height:1; user-select:none; }
+.lvl-code { display:block; font-family:'DM Mono',monospace; font-size:10px; font-weight:600; color:var(--navy); background:var(--amber-lo); border:1px solid var(--amber-hi); border-radius:4px; padding:2px 6px; white-space:nowrap; line-height:1.35; width:max-content; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+.lvl-desc { display:block; margin-top:2px; color:var(--text-2); line-height:1.35; overflow:hidden; text-overflow:ellipsis; }
+.lvl-empty { color:var(--border-2); font-style:italic; }
+.wide-th { white-space:normal !important; line-height:1.15; }
 .cc  { font-family:'DM Mono',monospace; font-size:11px; color:var(--text-2); }
 .dc  { color:var(--text); line-height:1.4; }
 
@@ -594,17 +592,7 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
       </div>
 
       <table id="dtable" style="display:none">
-        <thead>
-          <tr>
-            <th data-col="ruta" style="min-width:220px">Ruta <span class="ths"></span></th>
-            <th data-col="codigo" style="min-width:128px">Código <span class="ths"></span></th>
-            <th data-col="descripcion" style="min-width:240px">Descripción <span class="ths"></span></th>
-            <th data-col="tipo" style="min-width:110px">Tipo <span class="ths"></span></th>
-            <th data-col="plantName" style="min-width:130px">Planta <span class="ths"></span></th>
-            <th data-col="cantidad" style="width:68px;text-align:right">Cant. <span class="ths"></span></th>
-            <th data-col="unidad" style="width:58px">Und.</th>
-          </tr>
-        </thead>
+        <thead id="dthead"></thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
@@ -770,6 +758,50 @@ const TYPE_CFG = {
   'Material':          { cls:'t-m', ico:'#si-m', lbl:'Material' },
 };
 
+function getMaxDepth(rows) {
+  return rows.reduce((m, r) => Math.max(m, (r.path && r.path.length) || r.nivel || 0), 0);
+}
+
+function buildLevelColumns(rows) {
+  const maxDepth = getMaxDepth(rows);
+  const cols = [];
+  for (let i = 1; i <= maxDepth; i++) {
+    cols.push({ key: `n${i}c`, label: `Nivel ${i} Código`, width: 128, kind: 'code', level: i });
+    cols.push({ key: `n${i}d`, label: `Nivel ${i} Descripción`, width: 240, kind: 'desc', level: i });
+  }
+  cols.push({ key: 'tipo', label: 'Tipo', width: 110, kind: 'type' });
+  cols.push({ key: 'cantidad', label: 'Cantidad', width: 68, kind: 'qty', align: 'right' });
+  cols.push({ key: 'unidad', label: 'Und.', width: 58, kind: 'unit' });
+  cols.push({ key: 'plantName', label: 'Planta', width: 130, kind: 'plant' });
+  cols.push({ key: 'archivo', label: 'Archivo', width: 180, kind: 'file' });
+  return cols;
+}
+
+function getColValue(row, colKey) {
+  const m = /^n(\d+)([cd])$/.exec(colKey);
+  if (m) {
+    const level = +m[1] - 1;
+    const part = row.path && row.path[level];
+    return part ? (m[2] === 'c' ? part.codigo : part.descripcion) : '';
+  }
+  if (colKey === 'cantidad') return row.cantidad === '' ? '' : (+row.cantidad || row.cantidad);
+  return row[colKey] ?? '';
+}
+
+function getSortValue(row, colKey) {
+  const v = getColValue(row, colKey);
+  return v === null || v === undefined ? '' : v;
+}
+
+function renderHeader(cols, sortCol, sortAsc) {
+  const ths = cols.map(c => {
+    const width = c.width ? ` style="${c.kind==='qty' ? 'width:'+c.width+'px;text-align:right' : 'min-width:'+c.width+'px'}"` : '';
+    const arrow = sortCol === c.key ? (sortAsc ? '▲' : '▼') : '';
+    return `<th data-col="${c.key}" class="wide-th"${width}>${c.label} <span class="ths">${arrow}</span></th>`;
+  }).join('');
+  document.getElementById('dthead').innerHTML = `<tr>${ths}</tr>`;
+}
+
 
 /* ════════════════════════════════════════════════════════
    RENDERER
@@ -783,13 +815,14 @@ const R = (() => {
     if (tp) rows = rows.filter(r => r.tipo === tp);
     if (ox) rows = rows.filter(r => r.conError);
     if (q)  rows = rows.filter(r =>
-      [r.codigo, r.descripcion, r.ruta, r.plantName, r.archivo]
+      [r.codigo, r.descripcion, r.plantName, r.archivo, ...(r.path || []).flatMap(p => [p.codigo, p.descripcion])]
         .some(v => v && String(v).toLowerCase().includes(q))
     );
     if (S.sortCol) {
       const asc = S.sortAsc;
       rows = [...rows].sort((a,b) => {
-        const va = String(a[S.sortCol]??''), vb = String(b[S.sortCol]??'');
+        const va = getSortValue(a, S.sortCol);
+        const vb = getSortValue(b, S.sortCol);
         if (S.sortCol === 'cantidad') {
           const na = parseFloat(va) || 0, nb = parseFloat(vb) || 0;
           return asc ? na-nb : nb-na;
@@ -800,7 +833,7 @@ const R = (() => {
     return rows;
   }
 
-  function renderPage(rows, q) {
+  function renderPage(rows, q, cols) {
     const ps = S.PS, total = rows.length;
     const maxP = Math.max(1, Math.ceil(total / ps));
     S.page = Math.min(S.page, maxP);
@@ -814,20 +847,18 @@ const R = (() => {
       tr.style.cssText = `animation:rowIn .22s ${Math.min(i,50)*7}ms var(--eox) both`;
       const cfg = TYPE_CFG[r.tipo] || { cls:'t-?', ico:'', lbl: r.tipo };
       const ico = cfg.ico ? `<svg width="10" height="10"><use href="${cfg.ico}"/></svg>` : '';
-      const bcHtml = (r.ruta||'').split(' › ')
-        .map(c => `<span class="bc">${hl(c, q)}</span>`)
-        .join('<span class="bcsep">›</span>');
-      const xBadge = r.conError
-        ? `<svg width="10" height="10" viewBox="0 0 14 14" fill="none" style="vertical-align:-1px;margin-right:3px;flex-shrink:0"><path d="M7 1L13 12.5H1L7 1z" stroke="oklch(55% 0.14 60)" stroke-width="1.5" stroke-linejoin="round" fill="oklch(93% 0.09 68)"/><path d="M7 6v3M7 10.5v.5" stroke="oklch(45% 0.12 60)" stroke-width="1.5" stroke-linecap="round"/></svg>` : '';
-      tr.innerHTML = `
-        <td class="ruta-td"><div class="bc-wrap">${bcHtml}</div></td>
-        <td class="cc">${hl(r.codigo, q)}</td>
-        <td class="dc">${xBadge}${hl(r.descripcion, q)}</td>
-        <td><span class="tb ${cfg.cls}">${ico}${cfg.lbl}</span></td>
-        <td style="color:var(--text-2);font-size:12px">${hl(r.plantName, q)}</td>
-        <td style="text-align:right;font-family:'DM Mono',monospace;font-size:11px">${esc(r.cantidad)}</td>
-        <td style="color:var(--text-3)">${esc(r.unidad)}</td>
-      `;
+      const xBadge = r.conError ? `<svg width="10" height="10" viewBox="0 0 14 14" fill="none" style="vertical-align:-1px;margin-right:3px;flex-shrink:0"><path d="M7 1L13 12.5H1L7 1z" stroke="oklch(55% 0.14 60)" stroke-width="1.5" stroke-linejoin="round" fill="oklch(93% 0.09 68)"/><path d="M7 6v3M7 10.5v.5" stroke="oklch(45% 0.12 60)" stroke-width="1.5" stroke-linecap="round"/></svg>` : '';
+      const cells = cols.map(c => {
+        const v = getColValue(r, c.key);
+        if (c.kind === 'code') return `<td><span class="lvl-code">${hl(v, q) || '<span class="lvl-empty">—</span>'}</span></td>`;
+        if (c.kind === 'desc') return `<td><span class="lvl-desc">${xBadge}${hl(v, q) || '<span class="lvl-empty">—</span>'}</span></td>`;
+        if (c.kind === 'type') return `<td><span class="tb ${cfg.cls}">${ico}${cfg.lbl}</span></td>`;
+        if (c.kind === 'qty') return `<td style="text-align:right;font-family:'DM Mono',monospace;font-size:11px">${esc(v)}</td>`;
+        if (c.kind === 'unit') return `<td style="color:var(--text-3)">${esc(v)}</td>`;
+        if (c.kind === 'plant') return `<td style="color:var(--text-2)">${hl(v, q)}</td>`;
+        return `<td>${hl(v, q)}</td>`;
+      }).join('');
+      tr.innerHTML = cells;
       frag.appendChild(tr);
     });
     tbody.innerHTML = '';
@@ -860,6 +891,9 @@ const R = (() => {
   }
 
   function render() {
+    const layoutRows = S.allRows();
+    const cols = buildLevelColumns(layoutRows);
+    renderHeader(cols, S.sortCol, S.sortAsc);
     const rows = filtered();
     const q = (document.getElementById('sinput').value||'').trim().toLowerCase();
     const tbl = document.getElementById('dtable'), emp = document.getElementById('empty');
@@ -869,7 +903,7 @@ const R = (() => {
       document.getElementById('pag').classList.add('hidden');
     } else {
       tbl.style.display = ''; emp.style.display = 'none';
-      renderPage(rows, q);
+      renderPage(rows, q, cols);
     }
   }
   return { render };
@@ -881,20 +915,13 @@ const R = (() => {
 ════════════════════════════════════════════════════════ */
 function safeName(n) { return String(n).replace(/[\/\\?*\[\]]/g,'-').slice(0,31); }
 
-// Flat export: Ruta (ancestor breadcrumb) + Código + Descripción + Tipo + Cantidad + Unidad + Planta + Archivo
-// Zero blank cells — Ruta always has the full ancestor path, even for nivel=1 rows.
+// Structured export: one pair of columns per hierarchy level.
 function buildHierarchyExport(rows) {
-  const hdr = ['Ruta', 'Código', 'Descripción', 'Tipo', 'Cantidad', 'Unidad', 'Planta', 'Archivo'];
-  const colWidths = [90, 20, 56, 18, 10, 8, 32, 36];
+  const cols = buildLevelColumns(rows);
+  const hdr = cols.map(c => c.label);
+  const colWidths = cols.map(c => c.width || 18);
   const data = rows.map(r => [
-    r.ruta || r.plantCode || '',
-    r.codigo,
-    r.descripcion,
-    r.tipo,
-    r.cantidad===''?'':(+r.cantidad||r.cantidad),
-    r.unidad,
-    r.plantName || r.plantCode,
-    r.archivo
+    ...cols.map(c => getColValue(r, c.key))
   ]);
   return { aoa: [hdr, ...data], colWidths };
 }
@@ -1121,13 +1148,11 @@ async function processFiles(list) {
 /* ════════════════════════════════════════════════════════
    SORT
 ════════════════════════════════════════════════════════ */
-document.querySelectorAll('#dtable thead th[data-col]').forEach(th => {
-  th.addEventListener('click', () => {
-    S.setSort(th.dataset.col);
-    document.querySelectorAll('#dtable .ths').forEach(s=>s.textContent='');
-    const sp = th.querySelector('.ths'); if(sp) sp.textContent = S.sortAsc?'▲':'▼';
-    R.render();
-  });
+document.getElementById('dthead').addEventListener('click', e => {
+  const th = e.target.closest('th[data-col]');
+  if (!th) return;
+  S.setSort(th.dataset.col);
+  R.render();
 });
 
 /* ════════════════════════════════════════════════════════
