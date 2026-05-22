@@ -758,14 +758,22 @@ const TYPE_CFG = {
   'Material':          { cls:'t-m', ico:'#si-m', lbl:'Material' },
 };
 
-function getMaxDepth(rows) {
-  return rows.reduce((m, r) => Math.max(m, (r.path && r.path.length) || r.nivel || 0), 0);
+const LEVEL_LIMIT = 6;
+
+function hasFullLevelPath(row, levelLimit = LEVEL_LIMIT) {
+  if (!row || !Array.isArray(row.path) || row.path.length < levelLimit) return false;
+  for (let i = 0; i < levelLimit; i++) {
+    const p = row.path[i];
+    if (!p) return false;
+    if (!String(p.codigo || '').trim()) return false;
+    if (!String(p.descripcion || '').trim()) return false;
+  }
+  return true;
 }
 
-function buildLevelColumns(rows) {
-  const maxDepth = getMaxDepth(rows);
+function buildLevelColumns() {
   const cols = [];
-  for (let i = 1; i <= maxDepth; i++) {
+  for (let i = 1; i <= LEVEL_LIMIT; i++) {
     cols.push({ key: `n${i}c`, label: `Nivel ${i} Código`, width: 128, kind: 'code', level: i });
     cols.push({ key: `n${i}d`, label: `Nivel ${i} Descripción`, width: 240, kind: 'desc', level: i });
   }
@@ -811,7 +819,7 @@ const R = (() => {
     const q = (document.getElementById('sinput').value || '').trim().toLowerCase();
     const tp = document.getElementById('ftype').value;
     const ox = document.getElementById('togx').checked;
-    let rows = S.tabRows();
+    let rows = S.tabRows().filter(r => hasFullLevelPath(r));
     if (tp) rows = rows.filter(r => r.tipo === tp);
     if (ox) rows = rows.filter(r => r.conError);
     if (q)  rows = rows.filter(r =>
@@ -891,8 +899,7 @@ const R = (() => {
   }
 
   function render() {
-    const layoutRows = S.allRows();
-    const cols = buildLevelColumns(layoutRows);
+    const cols = buildLevelColumns();
     renderHeader(cols, S.sortCol, S.sortAsc);
     const rows = filtered();
     const q = (document.getElementById('sinput').value||'').trim().toLowerCase();
@@ -917,10 +924,11 @@ function safeName(n) { return String(n).replace(/[\/\\?*\[\]]/g,'-').slice(0,31)
 
 // Structured export: one pair of columns per hierarchy level.
 function buildHierarchyExport(rows) {
-  const cols = buildLevelColumns(rows);
+  const baseRows = rows.filter(r => hasFullLevelPath(r));
+  const cols = buildLevelColumns();
   const hdr = cols.map(c => c.label);
   const colWidths = cols.map(c => c.width || 18);
-  const data = rows.map(r => [
+  const data = baseRows.map(r => [
     ...cols.map(c => getColValue(r, c.key))
   ]);
   return { aoa: [hdr, ...data], colWidths };
@@ -930,26 +938,34 @@ function exportExcel() {
   if (typeof XLSX === 'undefined') { toast('SheetJS no disponible','e'); return; }
   const files = S.files; if (!files.length) { toast('No hay datos','w'); return; }
   const wb = XLSX.utils.book_new();
+  let sheetCount = 0;
   files.forEach(f => {
     const { aoa, colWidths } = buildHierarchyExport(f.rows);
+    if (aoa.length <= 1) return;
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = colWidths.map(w => ({wch:w}));
     XLSX.utils.book_append_sheet(wb, ws, safeName(f.plantCode));
+    sheetCount++;
   });
   const all = S.allRows();
   if (all.length) {
     const { aoa, colWidths } = buildHierarchyExport(all);
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = colWidths.map(w => ({wch:w}));
-    XLSX.utils.book_append_sheet(wb, ws, 'Consolidado');
+    if (aoa.length > 1) {
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = colWidths.map(w => ({wch:w}));
+      XLSX.utils.book_append_sheet(wb, ws, 'Consolidado');
+      sheetCount++;
+    }
   }
+  if (!sheetCount) { toast('Sin filas válidas con Nivel 1..6 completo','w'); return; }
   XLSX.writeFile(wb, `IH01_${new Date().toISOString().slice(0,10)}.xlsx`);
-  toast(`Excel generado · ${files.length} planta(s) · ${fmt(all.length)} registros`);
+  toast(`Excel generado · ${sheetCount} hoja(s) · filtro Nivel 1..6 aplicado`);
 }
 
 function exportCSV() {
   const rows = S.tabRows(); if (!rows.length) { toast('No hay datos','w'); return; }
   const { aoa } = buildHierarchyExport(rows);
+  if (aoa.length <= 1) { toast('Sin filas válidas con Nivel 1..6 completo','w'); return; }
   const [hdr, ...data] = aoa;
   const esc = v => `"${String(v===null||v===undefined?'':v).replace(/"/g,'""')}"`;
   const csv = [hdr.map(esc).join(','), ...data.map(r => r.map(esc).join(','))].join('\n');
