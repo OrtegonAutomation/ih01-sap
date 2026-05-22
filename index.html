@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IH01 · Árbol de Equipos SAP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+/* ─── TOKENS ───────────────────────────────────────────── */
+:root {
+  --navy:      oklch(22% 0.04 252);
+  --navy-2:    oklch(27% 0.05 252);
+  --navy-3:    oklch(34% 0.05 252);
+  --amber:     oklch(74% 0.17 68);
+  --amber-hi:  oklch(80% 0.14 72);
+  --amber-lo:  oklch(95.5% 0.04 72);
+  --bg:        oklch(97% 0.008 252);
+  --bg-2:      oklch(93.5% 0.012 252);
+  --surface:   oklch(99.5% 0.003 252);
+  --border:    oklch(89% 0.016 252);
+  --border-2:  oklch(82% 0.025 252);
+  --text:      oklch(17% 0.025 252);
+  --text-2:    oklch(38% 0.03 252);
+  --text-3:    oklch(58% 0.025 252);
+  --red:       oklch(56% 0.22 28);
+  --red-lo:    oklch(96.5% 0.03 28);
+  --green:     oklch(60% 0.19 148);
+  --green-lo:  oklch(96% 0.04 148);
+  --blue:      oklch(56% 0.2 265);
+  --blue-lo:   oklch(96% 0.04 265);
+  --purple:    oklch(58% 0.19 295);
+  --purple-lo: oklch(96% 0.04 295);
+  --orange:    oklch(68% 0.18 58);
+  --orange-lo: oklch(96% 0.05 58);
+  --r-sm: 6px;  --r: 10px;  --r-lg: 16px;
+  --sh-sm: 0 1px 3px oklch(0% 0 0 / 7%), 0 1px 2px oklch(0% 0 0 / 5%);
+  --sh:    0 4px 14px oklch(0% 0 0 / 9%), 0 1px 4px oklch(0% 0 0 / 5%);
+  --sh-lg: 0 18px 48px oklch(0% 0 0 / 13%), 0 4px 14px oklch(0% 0 0 / 7%);
+  --eox: cubic-bezier(0.16, 1, 0.3, 1);
+  --eoq: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* ─── RESET ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 13px; line-height: 1.5;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; border: none; }
+input, select { font-family: inherit; }
+mark { background: oklch(92% 0.12 72); border-radius: 2px; padding: 0 2px; color: inherit; }
+code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 5px; border-radius: 3px; font-size: .9em; }
+
+/* ─── KEYFRAMES ───────────────────────────────────────── */
+@keyframes fadeUp  { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
+@keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+@keyframes slideIn { from{opacity:0;transform:translateX(-14px)} to{opacity:1;transform:none} }
+@keyframes scaleIn { from{opacity:0;transform:scale(.95)} to{opacity:1;transform:scale(1)} }
+@keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:.5} }
+@keyframes float   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+@keyframes smoke   { 0%{opacity:0;transform:translateY(0) scale(1)} 35%{opacity:.4} 100%{opacity:0;transform:translateY(-20px) scale(1.6)} }
+@keyframes gearCW  { to{transform:rotate(360deg)} }
+@keyframes gearCCW { to{transform:rotate(-360deg)} }
+@keyframes treeLine{ from{stroke-dashoffset:120;opacity:0} to{stroke-dashoffset:0;opacity:1} }
+@keyframes treeNode{ from{opacity:0;transform:scale(0)} to{opacity:1;transform:scale(1)} }
+@keyframes rowIn   { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none} }
+@keyframes borderPulse { 0%,100%{border-color:var(--amber)} 50%{border-color:var(--amber-hi)} }
+@keyframes docFloat { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-8px) rotate(-1deg)} }
+
+/* ─── HEADER ──────────────────────────────────────────── */
+#header {
+  background: var(--navy);
+  padding: 0 clamp(16px,4vw,40px);
+  display: flex; align-items: stretch; gap: 0;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 20px oklch(0% 0 0 / 28%);
+  overflow: hidden;
+}
+/* Subtle background grid lines */
+#header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(90deg, oklch(28% 0.04 252) 0, oklch(28% 0.04 252) 1px, transparent 1px, transparent 48px);
+  opacity: .35; pointer-events: none;
+}
+#header-brand { display:flex; align-items:center; gap:14px; padding:14px 0; flex:1; position:relative; }
+#hlogo { width:46px; height:46px; flex-shrink:0; }
+.htitle { color:var(--surface); }
+.htitle h1 { font-size:clamp(14px,2vw,18px); font-weight:700; letter-spacing:-.4px; line-height:1.2; }
+.htitle p  { font-size:11px; color:oklch(68% 0.025 252); margin-top:2px; }
+#header-stats { display:flex; align-items:center; border-left:1px solid oklch(32% 0.04 252); margin-left:24px; position:relative; }
+.hstat { padding:0 22px; border-right:1px solid oklch(32% 0.04 252); text-align:center; }
+.hstat-v { font-size:19px; font-weight:700; color:var(--amber); line-height:1; font-feature-settings:'tnum'; display:block; }
+.hstat-l { font-size:10px; color:oklch(58% 0.025 252); text-transform:uppercase; letter-spacing:.7px; margin-top:3px; display:block; }
+
+/* ─── LAYOUT ──────────────────────────────────────────── */
+#app {
+  max-width: 1440px; margin: 0 auto;
+  padding: clamp(16px,3vw,32px) clamp(12px,3vw,32px);
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+/* ─── UPLOAD ──────────────────────────────────────────── */
+#drop-area {
+  position: relative;
+  border: 2px dashed var(--border-2);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  padding: 38px 24px 32px;
+  text-align: center; cursor: pointer;
+  transition: border-color .25s, background .25s, box-shadow .25s;
+  animation: fadeUp .5s var(--eox) both;
+}
+#drop-area:hover { border-color:var(--amber); background:var(--amber-lo); box-shadow:var(--sh); }
+#drop-area.drag-over { border-color:var(--amber); background:var(--amber-lo); animation:borderPulse 1s ease-in-out infinite; box-shadow:var(--sh); }
+#file-input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.drop-title { font-size:16px; font-weight:600; color:var(--text); margin-top:12px; }
+.drop-sub   { font-size:12px; color:var(--text-3); margin-top:5px; }
+.drop-hint  {
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:11px; color:var(--text-3);
+  background:var(--bg-2); border-radius:20px;
+  padding:4px 13px; margin-top:12px;
+}
+#file-list { display:flex; flex-direction:column; gap:8px; }
+
+/* ─── X-FLAG INFO ─────────────────────────────────────── */
+#xflag-info {
+  display:none; gap:12px; align-items:flex-start;
+  background:var(--amber-lo); border:1px solid var(--amber-hi);
+  border-radius:var(--r); padding:13px 16px;
+  font-size:12px; color:oklch(38% 0.06 68);
+  animation:fadeUp .35s var(--eox) both;
+}
+#xflag-info strong { display:block; margin-bottom:3px; font-size:13px; color:oklch(28% 0.07 68); }
+
+/* ─── FILE CARDS ──────────────────────────────────────── */
+.fcard {
+  background:var(--surface); border-radius:var(--r);
+  border:1px solid var(--border); padding:12px 16px;
+  display:flex; align-items:center; gap:14px;
+  box-shadow:var(--sh-sm); animation:slideIn .35s var(--eox) both;
+  transition:box-shadow .2s, border-color .2s;
+}
+.fcard:hover { box-shadow:var(--sh); }
+.fcard.fc-x { border-left:3px solid var(--amber); }
+.fcard-ico { width:38px; height:38px; flex-shrink:0; background:var(--bg-2); border-radius:var(--r-sm); display:flex; align-items:center; justify-content:center; }
+.fcard-info { flex:1; min-width:0; }
+.fcard-name { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fcard-meta { font-size:11px; color:var(--text-3); margin-top:2px; }
+.fcard-chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+.chip { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:600; }
+.chip-n   { background:var(--bg-2); color:var(--text-2); }
+.chip-x   { background:var(--amber-lo); color:oklch(36% 0.09 68); }
+.chip-ok  { background:var(--green-lo); color:oklch(34% 0.14 148); }
+.chip-w   { background:var(--orange-lo); color:oklch(36% 0.1 58); }
+.btn-rm {
+  background:transparent; color:var(--text-3);
+  padding:6px 8px; border-radius:var(--r-sm); font-size:14px; line-height:1;
+  transition:background .15s, color .15s; flex-shrink:0;
+}
+.btn-rm:hover { background:var(--red-lo); color:var(--red); }
+
+/* ─── CONTROLS ────────────────────────────────────────── */
+#cbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; animation:fadeUp .4s var(--eox) both; }
+#cbar.hidden { display:none; }
+.btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 16px; border-radius:var(--r-sm);
+  font-size:12px; font-weight:600; letter-spacing:.1px;
+  transition:opacity .15s, transform .1s, box-shadow .15s;
+}
+.btn:hover  { opacity:.87; box-shadow:var(--sh-sm); }
+.btn:active { transform:scale(.97); }
+.btn-p { background:var(--navy); color:var(--surface); }
+.btn-s { background:var(--green); color:var(--surface); }
+.btn-g { background:var(--bg-2); color:var(--text-2); border:1px solid var(--border); }
+.dvdr  { width:1px; height:24px; background:var(--border); margin:0 4px; }
+
+/* ─── TABS ────────────────────────────────────────────── */
+#twrap.hidden { display:none; }
+#twrap { animation:fadeUp .4s .05s var(--eox) both; }
+#tabs {
+  display:flex; gap:2px; border-bottom:2px solid var(--border);
+  overflow-x:auto; scrollbar-width:thin; padding-bottom:0;
+}
+#tabs::-webkit-scrollbar { height:3px; }
+#tabs::-webkit-scrollbar-thumb { background:var(--border-2); border-radius:2px; }
+.tab {
+  padding:9px 18px;
+  border:1px solid transparent; border-bottom:none;
+  border-radius:var(--r-sm) var(--r-sm) 0 0;
+  background:transparent; color:var(--text-3);
+  font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer;
+  position:relative; bottom:-2px;
+  display:flex; align-items:center; gap:7px;
+  transition:color .2s, background .2s;
+}
+.tab:hover { color:var(--text-2); background:var(--bg-2); }
+.tab.on { color:var(--navy); background:var(--surface); border-color:var(--border); border-bottom-color:var(--surface); }
+.tab-n { background:var(--bg-2); color:var(--text-3); border-radius:20px; padding:1px 7px; font-size:10px; font-weight:700; }
+.tab.on .tab-n { background:var(--amber-lo); color:oklch(36% 0.1 68); }
+.tab-dot { width:6px; height:6px; background:var(--amber); border-radius:50%; animation:pulse 2s ease-in-out infinite; }
+
+/* ─── TABLE SECTION ───────────────────────────────────── */
+#tsec { background:var(--surface); border-radius:0 0 var(--r-lg) var(--r-lg); border:1px solid var(--border); border-top:none; overflow:hidden; box-shadow:var(--sh); animation:scaleIn .35s var(--eox) both; }
+#tsec.hidden { display:none; }
+
+/* Filter row */
+#frow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:11px 16px; border-bottom:1px solid var(--border); background:var(--bg); }
+.srch { position:relative; display:flex; align-items:center; }
+.srch svg { position:absolute; left:9px; color:var(--text-3); pointer-events:none; }
+#sinput {
+  width:260px; padding:7px 10px 7px 30px;
+  border:1px solid var(--border); border-radius:var(--r-sm);
+  background:var(--surface); font-size:12px; color:var(--text);
+  outline:none; transition:border-color .2s, box-shadow .2s;
+}
+#sinput:focus { border-color:var(--navy-3); box-shadow:0 0 0 3px oklch(22% 0.04 252 / 10%); }
+.fsel { padding:7px 10px; border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface); font-size:12px; font-family:inherit; color:var(--text); outline:none; cursor:pointer; }
+.togx {
+  display:inline-flex; align-items:center; gap:6px; padding:6px 11px;
+  border:1px solid var(--border); border-radius:var(--r-sm); background:var(--surface);
+  font-size:12px; color:var(--text-2); cursor:pointer; user-select:none;
+  transition:background .2s, border-color .2s, color .2s;
+}
+.togx:has(input:checked) { background:var(--amber-lo); border-color:var(--amber-hi); color:oklch(34% 0.09 68); }
+.togx input { display:none; }
+#rowcnt { margin-left:auto; font-size:11px; color:var(--text-3); white-space:nowrap; }
+
+/* Table */
+#twrap2 { overflow:auto; max-height:58vh; }
+#dtable { width:100%; border-collapse:collapse; font-size:12px; }
+#dtable thead th {
+  position:sticky; top:0; z-index:5;
+  background:var(--navy); color:var(--surface);
+  padding:9px 12px; text-align:left;
+  font-weight:600; font-size:11px; letter-spacing:.3px; white-space:nowrap;
+  cursor:pointer; user-select:none;
+  border-right:1px solid oklch(30% 0.04 252);
+  transition:background .15s;
+}
+#dtable thead th:hover { background:var(--navy-2); }
+#dtable thead th:last-child { border-right:none; }
+.ths { margin-left:3px; opacity:.4; font-size:9px; }
+#dtable tbody tr { border-bottom:1px solid var(--bg-2); transition:background .1s; }
+#dtable tbody tr:hover { background:var(--bg); }
+#dtable tbody tr.rx { background:oklch(97% 0.04 68); }
+#dtable tbody tr.rx:hover { background:oklch(94.5% 0.05 68); }
+#dtable tbody td { padding:7px 12px; vertical-align:middle; border-right:1px solid var(--bg-2); max-width:300px; }
+#dtable tbody td:last-child { border-right:none; }
+.cc  { font-family:'DM Mono',monospace; font-size:11px; color:var(--text-2); }
+.dc  { color:var(--text); line-height:1.4; }
+
+/* Type badges */
+.tb { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:4px; font-size:10px; font-weight:700; white-space:nowrap; }
+.t-u { background:var(--blue-lo);   color:oklch(33% 0.15 265); }
+.t-e { background:var(--green-lo);  color:oklch(31% 0.15 148); }
+.t-l { background:var(--orange-lo); color:oklch(34% 0.14 58); }
+.t-m { background:var(--purple-lo); color:oklch(34% 0.15 295); }
+.t-? { background:var(--bg-2);      color:var(--text-3); }
+
+/* Level pill */
+.lvl { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; background:var(--bg-2); border-radius:50%; font-size:10px; font-weight:700; color:var(--text-3); }
+
+/* X flag */
+.xyes { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700; color:oklch(36% 0.1 68); }
+
+/* Pagination */
+#pag { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-top:1px solid var(--border); background:var(--bg); flex-wrap:wrap; gap:8px; }
+#pag.hidden { display:none; }
+.pi { font-size:11px; color:var(--text-3); }
+.pc { display:flex; align-items:center; gap:4px; }
+.pb {
+  padding:5px 11px; border-radius:var(--r-sm);
+  background:var(--surface); border:1px solid var(--border);
+  font-size:11px; font-weight:600; color:var(--text-2);
+  transition:background .15s, border-color .15s, color .15s;
+}
+.pb:hover:not(:disabled) { background:var(--navy); color:var(--surface); border-color:var(--navy); }
+.pb:disabled { opacity:.4; cursor:default; }
+.pb.on { background:var(--navy); color:var(--surface); border-color:var(--navy); }
+
+/* Empty state */
+#empty { display:flex; flex-direction:column; align-items:center; padding:64px 24px; color:var(--text-3); animation:fadeIn .4s ease both; }
+#empty p { font-size:14px; margin-top:16px; }
+#empty span { font-size:12px; margin-top:4px; }
+
+/* ─── WARNINGS ────────────────────────────────────────── */
+#wsec.hidden { display:none; }
+#wsec { animation:fadeUp .35s var(--eox) both; }
+#wdet { border:1px solid oklch(84% 0.08 58); border-radius:var(--r); background:var(--orange-lo); overflow:hidden; }
+#wdet summary { padding:11px 16px; font-weight:600; font-size:12px; color:oklch(34% 0.1 58); cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; }
+#wdet summary::-webkit-details-marker { display:none; }
+#wlist { max-height:180px; overflow-y:auto; padding:8px 16px 12px; font-size:11px; color:oklch(36% 0.09 58); font-family:'DM Mono',monospace; border-top:1px solid oklch(84% 0.08 58); }
+.wi { padding:4px 0; border-bottom:1px solid oklch(90% 0.06 58); }
+.wi:last-child { border-bottom:none; }
+
+/* ─── LOADING ─────────────────────────────────────────── */
+#loading { position:fixed; inset:0; z-index:9999; background:oklch(10% 0.03 252 / 65%); backdrop-filter:blur(4px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; }
+#loading.hidden { display:none; }
+#loading p { color:var(--surface); font-size:13px; font-weight:500; opacity:.9; }
+
+/* ─── TOAST ───────────────────────────────────────────── */
+#toast { position:fixed; bottom:24px; right:24px; z-index:9998; background:var(--navy); color:var(--surface); padding:10px 18px; border-radius:var(--r); font-size:13px; font-weight:500; box-shadow:var(--sh-lg); display:flex; align-items:center; gap:8px; transition:opacity .3s var(--eox), transform .3s var(--eox); max-width:340px; }
+#toast.hidden { opacity:0; transform:translateY(10px); pointer-events:none; }
+#toast.tw { background:oklch(34% 0.08 68); }
+#toast.te { background:oklch(34% 0.16 28); }
+
+@media (max-width:600px) {
+  #header-stats { display:none; }
+  #sinput { width:100%; }
+  .tab { padding:8px 11px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+}
+  </style>
+</head>
+<body>
+
+<!-- SVG symbol defs -->
+<svg width="0" height="0" style="position:absolute;overflow:hidden">
+  <defs>
+    <symbol id="si-u" viewBox="0 0 14 14"><rect x="1" y="1" width="5" height="5" rx=".8" fill="currentColor"/><rect x="8" y="1" width="5" height="5" rx=".8" fill="currentColor"/><rect x="1" y="8" width="5" height="5" rx=".8" fill="currentColor"/><rect x="8" y="8" width="5" height="5" rx=".8" fill="currentColor"/></symbol>
+    <symbol id="si-e" viewBox="0 0 14 14"><circle cx="7" cy="7" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path stroke="currentColor" stroke-width="1.4" d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.6 2.6l1 1M10.4 10.4l1 1M2.6 11.4l1-1M10.4 3.6l1-1"/></symbol>
+    <symbol id="si-l" viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="2" rx=".8" fill="currentColor"/><rect x="1" y="6" width="8" height="2" rx=".8" fill="currentColor"/><rect x="1" y="10" width="10" height="2" rx=".8" fill="currentColor"/></symbol>
+    <symbol id="si-m" viewBox="0 0 14 14"><path fill="currentColor" d="M3 2h8v2.5L7 6.5 3 4.5z"/><path fill="currentColor" opacity=".8" d="M1.5 7.5L7 11l5.5-3.5v3.5L7 14.5 1.5 11z"/></symbol>
+  </defs>
+</svg>
+
+<!-- LOADING -->
+<div id="loading" class="hidden">
+  <!-- Animated gear loader -->
+  <svg width="76" height="76" viewBox="0 0 76 76" fill="none">
+    <g style="transform-origin:38px 38px;animation:gearCW 2.2s linear infinite">
+      <path stroke="var(--amber)" stroke-width="2.5" fill="none"
+        d="M38 10 L40.8 16.8 L48.2 14.2 L49 21.8 L56.5 22.8 L54.8 30.2 L61.5 33.8 L57.8 40.5 L61.5 47.2 L54.8 50.8 L56.5 58.2 L49 59.2 L48.2 66.8 L40.8 64.2 L38 71 L35.2 64.2 L27.8 66.8 L27 59.2 L19.5 58.2 L21.2 50.8 L14.5 47.2 L18.2 40.5 L14.5 33.8 L21.2 30.2 L19.5 22.8 L27 21.8 L27.8 14.2 L35.2 16.8Z"/>
+    </g>
+    <g style="transform-origin:38px 38px;animation:gearCCW 3s linear infinite">
+      <circle cx="38" cy="38" r="16" stroke="var(--blue)" stroke-width="2" stroke-dasharray="7 4" fill="none"/>
+    </g>
+    <circle cx="38" cy="38" r="7" fill="var(--amber)"/>
+    <circle cx="38" cy="38" r="3" fill="var(--navy)"/>
+  </svg>
+  <p>Analizando archivos IH01…</p>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="hidden">
+  <svg id="tico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></svg>
+  <span id="tmsg"></span>
+</div>
+
+<!-- HEADER -->
+<header id="header">
+  <div id="header-brand">
+    <!-- Factory SVG with animated gear + smoke -->
+    <svg id="hlogo" viewBox="0 0 46 46" fill="none">
+      <!-- Building base -->
+      <rect x="4" y="24" width="38" height="18" rx="1.5" fill="oklch(30% 0.05 252)"/>
+      <!-- Tower -->
+      <rect x="8" y="15" width="13" height="27" rx="1" fill="oklch(27% 0.05 252)"/>
+      <!-- Windows on tower -->
+      <rect x="10.5" y="18" width="3.5" height="3.5" rx=".5" fill="oklch(74% 0.17 68)"/>
+      <rect x="16" y="18" width="3.5" height="3.5" rx=".5" fill="oklch(74% 0.17 68)"/>
+      <rect x="10.5" y="24" width="3.5" height="3.5" rx=".5" fill="oklch(74% 0.17 68)" opacity=".65"/>
+      <rect x="16" y="24" width="3.5" height="3.5" rx=".5" fill="oklch(74% 0.17 68)" opacity=".65"/>
+      <!-- Windows on base -->
+      <rect x="25" y="27" width="4.5" height="4.5" rx=".5" fill="oklch(74% 0.17 68)" opacity=".55"/>
+      <rect x="32.5" y="27" width="4.5" height="4.5" rx=".5" fill="oklch(74% 0.17 68)" opacity=".55"/>
+      <!-- Door -->
+      <rect x="20" y="34" width="6" height="8" rx=".8" fill="oklch(54% 0.2 265)" opacity=".85"/>
+      <!-- Chimneys -->
+      <rect x="29" y="9" width="4" height="15" rx=".5" fill="oklch(25% 0.04 252)"/>
+      <rect x="35" y="13" width="3" height="11" rx=".5" fill="oklch(25% 0.04 252)"/>
+      <!-- Smoke 1 -->
+      <ellipse cx="31" cy="7" rx="2" ry="2.5" fill="oklch(62% 0.04 252)"
+        style="animation:smoke 2.6s ease-out infinite;transform-origin:31px 9px"/>
+      <!-- Smoke 2 (offset) -->
+      <ellipse cx="31" cy="7" rx="1.6" ry="2" fill="oklch(56% 0.04 252)"
+        style="animation:smoke 2.6s .9s ease-out infinite;transform-origin:31px 9px"/>
+      <!-- Smoke 3 small chimney -->
+      <ellipse cx="36.5" cy="11.5" rx="1.4" ry="1.8" fill="oklch(58% 0.04 252)"
+        style="animation:smoke 2.2s .4s ease-out infinite;transform-origin:36.5px 13px"/>
+      <!-- Gear -->
+      <g style="transform:translate(33px,17px);transform-origin:4px 4px;animation:gearCW 5s linear infinite">
+        <path d="M4 1v.8M4 7.2V8M1 4h.8M7.2 4H8M1.8 1.8l.6.6M5.6 5.6l.6.6M1.8 6.2l.6-.6M5.6 2.4l.6-.6"
+          stroke="var(--amber)" stroke-width=".9" stroke-linecap="round"/>
+        <circle cx="4" cy="4" r="2.8" fill="none" stroke="var(--amber)" stroke-width="1"/>
+        <circle cx="4" cy="4" r="1.2" fill="var(--amber)"/>
+      </g>
+    </svg>
+    <div class="htitle">
+      <h1>IH01 · Árbol de Equipos SAP</h1>
+      <p>Transacción IH01 · Parser, consolidador y exportador de plantas</p>
+    </div>
+  </div>
+  <div id="header-stats">
+    <div class="hstat"><span class="hstat-v" id="hs-p">0</span><span class="hstat-l">Plantas</span></div>
+    <div class="hstat"><span class="hstat-v" id="hs-r">0</span><span class="hstat-l">Registros</span></div>
+    <div class="hstat"><span class="hstat-v" id="hs-x">0</span><span class="hstat-l">Marcas X</span></div>
+  </div>
+</header>
+
+<!-- APP -->
+<main id="app">
+
+  <!-- Upload zone -->
+  <div>
+    <div id="drop-area">
+      <input type="file" id="file-input" multiple accept=".txt,.TXT">
+
+      <!-- Animated upload illustration SVG -->
+      <svg width="110" height="72" viewBox="0 0 110 72" fill="none" style="display:block;margin:0 auto">
+        <!-- Platform -->
+        <rect x="8" y="60" width="94" height="4" rx="2" fill="oklch(88% 0.016 252)"/>
+        <!-- Shadow under docs -->
+        <ellipse cx="55" cy="63" rx="32" ry="3" fill="oklch(88% 0.018 252)"/>
+        <!-- Doc back right -->
+        <g style="animation:float 3s .4s ease-in-out infinite">
+          <rect x="58" y="22" width="30" height="36" rx="3" fill="oklch(93.5% 0.013 252)" stroke="oklch(82% 0.022 252)" stroke-width="1"/>
+          <line x1="65" y1="32" x2="81" y2="32" stroke="oklch(74% 0.03 252)" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="65" y1="38" x2="79" y2="38" stroke="oklch(78% 0.025 252)" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="65" y1="44" x2="77" y2="44" stroke="oklch(78% 0.025 252)" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="65" y1="50" x2="80" y2="50" stroke="oklch(80% 0.02 252)" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        <!-- Doc front left (highlighted) -->
+        <g style="animation:docFloat 3s ease-in-out infinite">
+          <rect x="22" y="16" width="34" height="42" rx="3" fill="white" stroke="var(--amber)" stroke-width="1.4"/>
+          <!-- Folded corner -->
+          <path d="M46 16 L56 26 L46 26Z" fill="var(--amber-lo)" stroke="var(--amber)" stroke-width=".8"/>
+          <!-- Content lines -->
+          <rect x="28" y="28" width="21" height="2.5" rx="1.2" fill="var(--amber)"/>
+          <rect x="28" y="34" width="15" height="2" rx="1" fill="oklch(84% 0.08 68)"/>
+          <rect x="28" y="39" width="18" height="2" rx="1" fill="oklch(84% 0.08 68)"/>
+          <rect x="28" y="44" width="12" height="2" rx="1" fill="oklch(84% 0.08 68)"/>
+          <rect x="28" y="49" width="17" height="2" rx="1" fill="oklch(84% 0.08 68)"/>
+          <!-- Tree lines on doc -->
+          <path d="M29 34 L29 54" stroke="oklch(82% 0.06 68)" stroke-width="1" stroke-dasharray="3 2" opacity=".6"/>
+        </g>
+        <!-- Upload arrow -->
+        <g style="animation:float 2.4s .6s ease-in-out infinite">
+          <path d="M55 11 L55 3 M50 7.5 L55 2.5 L60 7.5" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        <!-- Sparkles -->
+        <circle cx="18" cy="20" r="2" fill="var(--amber)" opacity=".5" style="animation:pulse 2s .2s ease-in-out infinite"/>
+        <circle cx="92" cy="32" r="1.5" fill="var(--blue)" opacity=".4" style="animation:pulse 2.4s .8s ease-in-out infinite"/>
+        <circle cx="15" cy="45" r="1.5" fill="var(--green)" opacity=".4" style="animation:pulse 2.2s 1.2s ease-in-out infinite"/>
+      </svg>
+
+      <div class="drop-title">Arrastra los archivos TXT de IH01 aquí</div>
+      <div class="drop-sub">o haz clic para seleccionar · Múltiples archivos soportados</div>
+      <div class="drop-hint">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 4v5M8 11.5v.5"/></svg>
+        Codificación Windows-1252 · Todos los nodos del árbol se preservan íntegramente
+      </div>
+    </div>
+    <div id="file-list"></div>
+  </div>
+
+  <!-- X-flag info box -->
+  <div id="xflag-info">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" flex-shrink="0" style="flex-shrink:0;margin-top:1px">
+      <path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 4v5M10 13v1.5" stroke="oklch(54% 0.14 68)" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <strong>¿Qué significa la columna "X SAP"?</strong>
+      La marca <code>X</code> al inicio de una línea es <em>la propia marca de eliminación de SAP</em>, no un error del parser. Indica que ese ítem está señalado para eliminación o exclusión dentro del sistema IH01. El parser los detecta y muestra correctamente, con fondo resaltado en ámbar para tu revisión.
+    </div>
+  </div>
+
+  <!-- Parse warnings -->
+  <div id="wsec" class="hidden">
+    <details id="wdet">
+      <summary>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M8 1L15 14H1z"/><path d="M8 6v4M8 12v.5" stroke-linecap="round"/></svg>
+        Advertencias del parser (<span id="wcnt">0</span>)
+      </summary>
+      <div id="wlist"></div>
+    </details>
+  </div>
+
+  <!-- Controls -->
+  <div id="cbar" class="hidden">
+    <button class="btn btn-p" id="btn-excel">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 2h7l4 4v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1zm6 0v4h4"/><path d="M5.5 10l1.5 2 3.5-4" stroke-linejoin="round"/></svg>
+      Exportar Excel
+    </button>
+    <button class="btn btn-s" id="btn-csv">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 8l4 4 4-4M8 3v9"/></svg>
+      Exportar CSV
+    </button>
+    <div class="dvdr"></div>
+    <button class="btn btn-g" id="btn-clear">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg>
+      Limpiar todo
+    </button>
+  </div>
+
+  <!-- Tabs -->
+  <div id="twrap" class="hidden"><div id="tabs"></div></div>
+
+  <!-- Table -->
+  <div id="tsec" class="hidden">
+    <div id="frow">
+      <div class="srch">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3.5 3.5"/></svg>
+        <input type="search" id="sinput" placeholder="Buscar código, descripción, ubicación…">
+      </div>
+      <select class="fsel" id="ftype">
+        <option value="">Todos los tipos</option>
+        <option value="Ubicación Técnica">Ubicación Técnica</option>
+        <option value="Equipo">Equipo</option>
+        <option value="Lista Técnica">Lista Técnica</option>
+        <option value="Material">Material</option>
+      </select>
+      <label class="togx"><input type="checkbox" id="togx"> Solo marcas X (SAP)</label>
+      <span id="rowcnt"></span>
+    </div>
+
+    <div id="twrap2">
+      <!-- Empty state with animated tree -->
+      <div id="empty">
+        <svg width="130" height="92" viewBox="0 0 130 92" fill="none">
+          <circle cx="65" cy="11" r="7.5" fill="oklch(88% 0.02 252)"
+            style="animation:treeNode .6s var(--eox) both"/>
+          <line x1="65" y1="19" x2="32" y2="42" stroke="oklch(82% 0.02 252)" stroke-width="2"
+            style="stroke-dasharray:40;animation:treeLine .5s .3s var(--eox) both"/>
+          <line x1="65" y1="19" x2="98" y2="42" stroke="oklch(82% 0.02 252)" stroke-width="2"
+            style="stroke-dasharray:40;animation:treeLine .5s .3s var(--eox) both"/>
+          <circle cx="32" cy="46" r="6.5" fill="oklch(87% 0.02 252)"
+            style="animation:treeNode .5s .5s var(--eox) both"/>
+          <circle cx="98" cy="46" r="6.5" fill="oklch(87% 0.02 252)"
+            style="animation:treeNode .5s .5s var(--eox) both"/>
+          <line x1="32" y1="53" x2="16" y2="72" stroke="oklch(86% 0.018 252)" stroke-width="1.6"
+            style="stroke-dasharray:26;animation:treeLine .4s .7s var(--eox) both"/>
+          <line x1="32" y1="53" x2="48" y2="72" stroke="oklch(86% 0.018 252)" stroke-width="1.6"
+            style="stroke-dasharray:26;animation:treeLine .4s .7s var(--eox) both"/>
+          <line x1="98" y1="53" x2="82" y2="72" stroke="oklch(86% 0.018 252)" stroke-width="1.6"
+            style="stroke-dasharray:26;animation:treeLine .4s .7s var(--eox) both"/>
+          <line x1="98" y1="53" x2="114" y2="72" stroke="oklch(86% 0.018 252)" stroke-width="1.6"
+            style="stroke-dasharray:26;animation:treeLine .4s .7s var(--eox) both"/>
+          <circle cx="16"  cy="76" r="5.5" fill="var(--amber-lo)" stroke="var(--amber-hi)" stroke-width="1.2"
+            style="animation:treeNode .4s .9s var(--eox) both"/>
+          <circle cx="48"  cy="76" r="5.5" fill="var(--amber-lo)" stroke="var(--amber-hi)" stroke-width="1.2"
+            style="animation:treeNode .4s .9s var(--eox) both"/>
+          <circle cx="82"  cy="76" r="5.5" fill="var(--amber-lo)" stroke="var(--amber-hi)" stroke-width="1.2"
+            style="animation:treeNode .4s .9s var(--eox) both"/>
+          <circle cx="114" cy="76" r="5.5" fill="var(--amber-lo)" stroke="var(--amber-hi)" stroke-width="1.2"
+            style="animation:treeNode .4s .9s var(--eox) both"/>
+        </svg>
+        <p>Carga los archivos TXT de IH01 para comenzar</p>
+        <span>Soporta múltiples plantas · Exporta a Excel con una hoja por planta</span>
+      </div>
+
+      <table id="dtable" style="display:none">
+        <thead>
+          <tr>
+            <th data-col="conError" style="width:56px;text-align:center">X SAP</th>
+            <th data-col="codigo" style="min-width:132px">Código <span class="ths"></span></th>
+            <th data-col="descripcion" style="min-width:260px">Descripción <span class="ths"></span></th>
+            <th data-col="tipo" style="min-width:116px">Tipo <span class="ths"></span></th>
+            <th data-col="nivel" style="width:60px;text-align:center">Nivel <span class="ths"></span></th>
+            <th data-col="codigoPadre" style="min-width:132px">Cód. Padre <span class="ths"></span></th>
+            <th data-col="ubicTecnica" style="min-width:195px">Ubic. Técnica <span class="ths"></span></th>
+            <th data-col="plantName" style="min-width:140px">Planta <span class="ths"></span></th>
+            <th data-col="cantidad" style="width:68px;text-align:right">Cant. <span class="ths"></span></th>
+            <th data-col="unidad" style="width:62px">Unidad</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="pag" class="hidden">
+      <span class="pi" id="pagi"></span>
+      <div class="pc" id="pagc"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- SheetJS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script>
+'use strict';
+
+/* ════════════════════════════════════════════════════════
+   IH01 PARSER
+   ──────────────────────────────────────────────────────
+   Depth: (connectorPos + 1) / 4  (1-indexed)
+   X prefix = SAP deletion flag, maintains same column offsets
+   5+ spaces required before qty/unit (avoids "15 HP" false match)
+════════════════════════════════════════════════════════ */
+const Parser = (() => {
+  function findCP(line) {
+    let s = line.length;
+    while (s > 0) {
+      const i = line.lastIndexOf('|--', s - 1);
+      if (i === -1) return -1;
+      if (/^[\s|]*$/.test(line.slice(0, i).replace(/^X/, ' '))) return i;
+      s = i;
+    }
+    return -1;
+  }
+
+  function getType(c) {
+    if (!c) return '?';
+    if (/^STL-/i.test(c))                             return 'Ubicación Técnica';
+    if (/^\d{10}$/.test(c) && c.startsWith('75'))     return 'Lista Técnica';
+    if (/^\d{10}$/.test(c) && c.startsWith('77'))     return 'Material';
+    if (/^\d{9}$/.test(c)  && c.startsWith('1'))      return 'Equipo';
+    if (/^\d{10}$/.test(c) && c.startsWith('1'))      return 'Equipo';
+    if (/^\d+$/.test(c))                              return 'Equipo';
+    return '?';
+  }
+
+  function parseContent(raw) {
+    const t = raw.trim(); if (!t) return null;
+    const si = t.search(/\s/);
+    const code = si > -1 ? t.slice(0, si) : t;
+    let rest = si > -1 ? t.slice(si).trim() : '';
+    let cantidad = '', unidad = '';
+    const qm = rest.match(/\s{5,}(\d+(?:[.,]\d+)?)\s+([A-Za-z]{1,4})\s*$/);
+    if (qm) { cantidad = qm[1]; unidad = qm[2].toUpperCase(); rest = rest.slice(0, qm.index).trimEnd(); }
+    return { code, descripcion: rest.replace(/\s+L\s*$/, '').replace(/\s{3,}/g, '  ').trim(), cantidad, unidad };
+  }
+
+  function hdr1(l) {
+    const c = l.match(/\b(STL-[A-Z0-9-]+)\b/i);
+    const d = l.match(/(\d{2}\.\d{2}\.\d{2,4})\s*$/);
+    return { plantCode: c ? c[1].toUpperCase() : '', validFrom: d ? d[1] : '' };
+  }
+
+  function hdr2(l) {
+    const m = l.match(/^[^\s].*?\s{2,}(.+)$/);
+    if (m) return m[1].trim();
+    const p = l.trim().split(/\s{3,}/);
+    return p.length > 1 ? p[p.length - 1].trim() : l.trim();
+  }
+
+  function parse(text, filename) {
+    const rows = [], warns = [];
+    let plantCode = '', plantName = '', validFrom = '';
+    const ps = []; // parent stack indexed by depth
+    const lines = text.split(/\r?\n/);
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (i === 0) {
+        const h = hdr1(line); plantCode = h.plantCode; validFrom = h.validFrom;
+        if (!plantCode) { const f = (lines[3]||'').match(/\b(STL-[A-Z0-9-]+)\b/i); if (f) plantCode = f[1].toUpperCase(); }
+        continue;
+      }
+      if (i === 1) { plantName = hdr2(line); continue; }
+      if (i === 3) {
+        const r = line.match(/^\s{1,4}(STL-[A-Z0-9-]+)\s{2,}(.+)$/i);
+        if (r) { if (!plantCode) plantCode = r[1].toUpperCase(); ps[0] = r[1].toUpperCase(); }
+        continue;
+      }
+      if (!line.trim() || (/^[X\s|]+$/.test(line) && !line.includes('--'))) continue;
+
+      const xFlag = /^X[ \t]/.test(line);
+      const cp = findCP(line); if (cp === -1) continue;
+
+      const dr = (cp + 1) / 4, d = Math.round(dr);
+      if (Math.abs(dr - d) > 0.26) warns.push({ linea: i+1, texto: line.trim().slice(0,80), razon: `Conector en col ${cp}` });
+
+      const p = parseContent(line.slice(cp).replace(/^\|--+\s*/, ''));
+      if (!p || !p.code) continue;
+
+      for (let k = d; k < ps.length; k++) ps[k] = undefined;
+      const codigoPadre = (d > 1 ? ps[d-1] : ps[0]) || '';
+      let ubicTecnica = plantCode;
+      for (let k = d-1; k >= 0; k--) { if (ps[k] && /^STL-/i.test(ps[k])) { ubicTecnica = ps[k]; break; } }
+      ps[d] = p.code;
+
+      rows.push({ plantCode, plantName, nivel: d, tipo: getType(p.code), codigo: p.code, descripcion: p.descripcion, codigoPadre, ubicTecnica, cantidad: p.cantidad, unidad: p.unidad, conError: xFlag, archivo: filename });
+    }
+    if (!plantName && plantCode) { const m = plantCode.match(/STL-P(\w+)/i); if (m) plantName = m[1]; }
+    return { rows, warns, plantCode, plantName, validFrom };
+  }
+  return { parse };
+})();
+
+
+/* ════════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════════ */
+const S = (() => {
+  const files = [];
+  let tab = 'all', page = 1, sortCol = null, sortAsc = true;
+  const PS = 150;
+  return {
+    get files() { return files; },
+    get tab()   { return tab; }, set tab(v) { tab = v; page = 1; },
+    get page()  { return page; }, set page(v) { page = v; },
+    get PS()    { return PS; },
+    get sortCol() { return sortCol; },
+    get sortAsc() { return sortAsc; },
+    setSort(c) { if (sortCol === c) sortAsc = !sortAsc; else { sortCol = c; sortAsc = true; } },
+    add(r) { const i = files.findIndex(f => f.plantCode === r.plantCode); if (i > -1) files.splice(i,1,r); else files.push(r); },
+    rm(pc) { const i = files.findIndex(f => f.plantCode === pc); if (i > -1) files.splice(i,1); },
+    clear() { files.length = 0; tab = 'all'; page = 1; },
+    tabRows() { return tab === 'all' ? files.flatMap(f => f.rows) : (files.find(f => f.plantCode === tab)?.rows ?? []); },
+    allRows() { return files.flatMap(f => f.rows); },
+    allWarns() { return files.flatMap(f => f.warns.map(w => ({...w, archivo: f.filename}))); },
+  };
+})();
+
+
+/* ════════════════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════════════════ */
+function esc(s) { return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function hl(s, q) {
+  if (!q || !s) return esc(s);
+  const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return esc(s).replace(re, '<mark>$1</mark>');
+}
+function fmt(n) { return Number(n).toLocaleString('es-CO'); }
+
+const TYPE_CFG = {
+  'Ubicación Técnica': { cls:'t-u', ico:'#si-u', lbl:'UbicTéc' },
+  'Equipo':            { cls:'t-e', ico:'#si-e', lbl:'Equipo' },
+  'Lista Técnica':     { cls:'t-l', ico:'#si-l', lbl:'ListaTéc' },
+  'Material':          { cls:'t-m', ico:'#si-m', lbl:'Material' },
+};
+
+
+/* ════════════════════════════════════════════════════════
+   RENDERER
+════════════════════════════════════════════════════════ */
+const R = (() => {
+  function filtered() {
+    const q = (document.getElementById('sinput').value || '').trim().toLowerCase();
+    const tp = document.getElementById('ftype').value;
+    const ox = document.getElementById('togx').checked;
+    let rows = S.tabRows();
+    if (tp) rows = rows.filter(r => r.tipo === tp);
+    if (ox) rows = rows.filter(r => r.conError);
+    if (q)  rows = rows.filter(r =>
+      [r.codigo, r.descripcion, r.ubicTecnica, r.codigoPadre, r.plantName, r.archivo]
+        .some(v => v && String(v).toLowerCase().includes(q))
+    );
+    if (S.sortCol) {
+      const asc = S.sortAsc;
+      rows = [...rows].sort((a,b) => {
+        const va = String(a[S.sortCol]??''), vb = String(b[S.sortCol]??'');
+        if (S.sortCol === 'nivel' || S.sortCol === 'cantidad') {
+          const na = parseFloat(va) || 0, nb = parseFloat(vb) || 0;
+          return asc ? na-nb : nb-na;
+        }
+        return asc ? va.localeCompare(vb,'es') : vb.localeCompare(va,'es');
+      });
+    }
+    return rows;
+  }
+
+  function renderPage(rows, q) {
+    const ps = S.PS, total = rows.length;
+    const maxP = Math.max(1, Math.ceil(total / ps));
+    S.page = Math.min(S.page, maxP);
+    const slice = rows.slice((S.page-1)*ps, S.page*ps);
+
+    const tbody = document.getElementById('tbody');
+    const frag = document.createDocumentFragment();
+    slice.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      if (r.conError) tr.classList.add('rx');
+      tr.style.cssText = `animation:rowIn .22s ${Math.min(i,50)*7}ms var(--eox) both`;
+      const cfg = TYPE_CFG[r.tipo] || { cls:'t-?', ico:'', lbl: r.tipo };
+      const ico = cfg.ico ? `<svg width="10" height="10"><use href="${cfg.ico}"/></svg>` : '';
+      tr.innerHTML = `
+        <td style="text-align:center">
+          ${r.conError
+            ? `<span class="xyes"><svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M7 1L13 12.5H1L7 1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="oklch(93% 0.09 68)"/><path d="M7 6v3M7 10.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>X SAP</span>`
+            : `<span style="color:var(--border-2);font-size:12px;font-weight:600">—</span>`}
+        </td>
+        <td class="cc">${hl(r.codigo, q)}</td>
+        <td class="dc">${hl(r.descripcion, q)}</td>
+        <td><span class="tb ${cfg.cls}">${ico}${cfg.lbl}</span></td>
+        <td style="text-align:center"><span class="lvl">${r.nivel}</span></td>
+        <td class="cc" style="color:var(--text-3)">${hl(r.codigoPadre, q)}</td>
+        <td class="cc">${hl(r.ubicTecnica, q)}</td>
+        <td style="color:var(--text-2)">${hl(r.plantName, q)}</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace;font-size:11px">${esc(r.cantidad)}</td>
+        <td style="color:var(--text-3)">${esc(r.unidad)}</td>
+      `;
+      frag.appendChild(tr);
+    });
+    tbody.innerHTML = '';
+    tbody.appendChild(frag);
+
+    const xc = rows.filter(r => r.conError).length;
+    document.getElementById('rowcnt').innerHTML =
+      `<strong>${fmt(slice.length)}</strong> de <strong>${fmt(total)}</strong>`
+      + (xc ? ` · <span style="color:oklch(38% 0.1 68);font-weight:600">${fmt(xc)} marca${xc>1?'s':''} X</span>` : '');
+
+    renderPag(total, S.page, maxP);
+  }
+
+  function renderPag(total, page, maxP) {
+    const pag = document.getElementById('pag');
+    if (maxP <= 1) { pag.classList.add('hidden'); return; }
+    pag.classList.remove('hidden');
+    const ps = S.PS;
+    document.getElementById('pagi').textContent = `Página ${page} de ${maxP} · ${fmt((page-1)*ps+1)}–${fmt(Math.min(page*ps,total))} de ${fmt(total)}`;
+    const pc = document.getElementById('pagc');
+    const btns = [];
+    btns.push(`<button class="pb" data-p="${page-1}" ${page===1?'disabled':''}>‹ Ant.</button>`);
+    let s = Math.max(1,page-2), e = Math.min(maxP,page+2);
+    if (s > 1) btns.push(`<button class="pb" data-p="1">1</button>${s>2?'<span style="padding:0 3px;color:var(--text-3)">…</span>':''}`);
+    for (let p = s; p <= e; p++) btns.push(`<button class="pb${p===page?' on':''}" data-p="${p}">${p}</button>`);
+    if (e < maxP) btns.push(`${e<maxP-1?'<span style="padding:0 3px;color:var(--text-3)">…</span>':''}<button class="pb" data-p="${maxP}">${maxP}</button>`);
+    btns.push(`<button class="pb" data-p="${page+1}" ${page===maxP?'disabled':''}>Sig. ›</button>`);
+    pc.innerHTML = btns.join('');
+    pc.querySelectorAll('.pb:not(:disabled)').forEach(b => b.addEventListener('click', () => { S.page = +b.dataset.p; render(); }));
+  }
+
+  function render() {
+    const rows = filtered();
+    const q = (document.getElementById('sinput').value||'').trim().toLowerCase();
+    const tbl = document.getElementById('dtable'), emp = document.getElementById('empty');
+    if (!rows.length) {
+      tbl.style.display = 'none'; emp.style.display = 'flex';
+      document.getElementById('rowcnt').textContent = 'Sin resultados';
+      document.getElementById('pag').classList.add('hidden');
+    } else {
+      tbl.style.display = ''; emp.style.display = 'none';
+      renderPage(rows, q);
+    }
+  }
+  return { render };
+})();
+
+
+/* ════════════════════════════════════════════════════════
+   EXCEL / CSV
+════════════════════════════════════════════════════════ */
+const COLS = [
+  { k:'conError',    l:'Marca X (SAP)',    f: v => v?'Sí':'No' },
+  { k:'codigo',      l:'Código' },
+  { k:'descripcion', l:'Descripción' },
+  { k:'tipo',        l:'Tipo' },
+  { k:'nivel',       l:'Nivel',           f: v => +v||v },
+  { k:'codigoPadre', l:'Código Padre' },
+  { k:'ubicTecnica', l:'Ubicación Técnica' },
+  { k:'plantCode',   l:'Cód. Planta' },
+  { k:'plantName',   l:'Planta' },
+  { k:'cantidad',    l:'Cantidad',        f: v => v===''?'': (+v||v) },
+  { k:'unidad',      l:'Unidad' },
+  { k:'archivo',     l:'Archivo Fuente' },
+];
+const CW = [11,18,50,16,7,18,32,14,24,10,8,28];
+
+function toAoa(rows) {
+  return [COLS.map(c=>c.l), ...rows.map(r => COLS.map(c => c.f ? c.f(r[c.k]) : (r[c.k]??'')))];
+}
+function safeName(n) { return String(n).replace(/[\/\\?*\[\]]/g,'-').slice(0,31); }
+
+function exportExcel() {
+  if (typeof XLSX === 'undefined') { toast('SheetJS no disponible','e'); return; }
+  const files = S.files; if (!files.length) { toast('No hay datos','w'); return; }
+  const wb = XLSX.utils.book_new();
+  files.forEach(f => { const ws = XLSX.utils.aoa_to_sheet(toAoa(f.rows)); ws['!cols']=CW.map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb,ws,safeName(f.plantCode)); });
+  const all = S.allRows();
+  if (all.length) { const ws = XLSX.utils.aoa_to_sheet(toAoa(all)); ws['!cols']=CW.map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb,ws,'Consolidado'); }
+  const xr = all.filter(r=>r.conError);
+  if (xr.length) { const ws = XLSX.utils.aoa_to_sheet(toAoa(xr)); ws['!cols']=CW.map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb,ws,'Marcas-X-SAP'); }
+  XLSX.writeFile(wb, `IH01_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast(`Excel generado · ${files.length} planta(s) · ${fmt(all.length)} registros`);
+}
+
+function exportCSV() {
+  const rows = S.tabRows(); if (!rows.length) { toast('No hay datos','w'); return; }
+  const hdr = COLS.map(c=>`"${c.l}"`).join(',');
+  const body = rows.map(r => COLS.map(c=>{ const v=c.f?c.f(r[c.k]):(r[c.k]??''); return `"${String(v).replace(/"/g,'""')}"`;}).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+hdr+'\n'+body],{type:'text/csv;charset=utf-8'}));
+  a.download = `IH01_${S.tab}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+  toast(`CSV exportado · ${fmt(rows.length)} registros`);
+}
+
+
+/* ════════════════════════════════════════════════════════
+   TOAST
+════════════════════════════════════════════════════════ */
+let _tt;
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  const ico = document.getElementById('tico');
+  document.getElementById('tmsg').textContent = msg;
+  el.className = type==='e'?'te':type==='w'?'tw':'';
+  ico.innerHTML = type==='e'
+    ? '<path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
+    : '<path d="M3 8l4 4 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>';
+  el.classList.remove('hidden');
+  clearTimeout(_tt); _tt = setTimeout(()=>el.classList.add('hidden'), 3200);
+}
+
+
+/* ════════════════════════════════════════════════════════
+   COUNTER ANIMATION
+════════════════════════════════════════════════════════ */
+function countTo(el, target, ms=650) {
+  const from = parseInt(el.textContent.replace(/\D/g,''))||0, t0=performance.now();
+  const step = now => {
+    const p = Math.min(1,(now-t0)/ms), e = 1-Math.pow(1-p,4);
+    el.textContent = fmt(Math.round(from+(target-from)*e));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+
+/* ════════════════════════════════════════════════════════
+   UI REFRESH
+════════════════════════════════════════════════════════ */
+function updStats() {
+  const all = S.allRows(), xc = all.filter(r=>r.conError).length;
+  countTo(document.getElementById('hs-p'), S.files.length);
+  countTo(document.getElementById('hs-r'), all.length);
+  countTo(document.getElementById('hs-x'), xc);
+}
+
+function renderCards() {
+  const c = document.getElementById('file-list'); c.innerHTML = '';
+  S.files.forEach((f,idx) => {
+    const xc = f.rows.filter(r=>r.conError).length, wc = f.warns.length;
+    const div = document.createElement('div');
+    div.className = 'fcard'+(xc?' fc-x':'');
+    div.style.animationDelay = idx*55+'ms';
+    div.innerHTML = `
+      <div class="fcard-ico">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="3" y="1" width="12" height="17" rx="2" fill="var(--bg-2)" stroke="var(--border-2)" stroke-width="1.2"/>
+          <path d="M11 1v5h4" stroke="var(--border-2)" stroke-width="1.1" fill="none"/>
+          <rect x="5.5" y="9" width="7" height="1.5" rx=".75" fill="var(--amber)"/>
+          <rect x="5.5" y="12" width="5" height="1.5" rx=".75" fill="var(--border-2)"/>
+          <rect x="5.5" y="15" width="6" height="1.5" rx=".75" fill="var(--border-2)"/>
+        </svg>
+      </div>
+      <div class="fcard-info">
+        <div class="fcard-name">${esc(f.filename)}</div>
+        <div class="fcard-meta">${esc(f.plantCode)} — ${esc(f.plantName)}${f.validFrom?' · Válido: '+f.validFrom:''}</div>
+        <div class="fcard-chips">
+          <span class="chip chip-n">${fmt(f.rows.length)} registros</span>
+          ${xc?`<span class="chip chip-x">⚑ ${xc} marca${xc>1?'s':''} X</span>`:`<span class="chip chip-ok">✓ Sin marcas X</span>`}
+          ${wc?`<span class="chip chip-w">⚠ ${wc} advertencia${wc>1?'s':''}</span>`:''}
+        </div>
+      </div>
+      <button class="btn-rm" data-pc="${esc(f.plantCode)}" title="Quitar">✕</button>`;
+    div.querySelector('.btn-rm').addEventListener('click', ()=>{
+      S.rm(f.plantCode); if(S.tab===f.plantCode) S.tab='all';
+      refresh(); toast('Archivo quitado');
+    });
+    c.appendChild(div);
+  });
+}
+
+function renderTabs() {
+  const t = document.getElementById('tabs'); t.innerHTML='';
+  const all = S.allRows(), xall = all.some(r=>r.conError);
+  mkTab('all','🗂 Consolidado',all.length,xall);
+  S.files.forEach(f => mkTab(f.plantCode,f.plantCode,f.rows.length,f.rows.some(r=>r.conError)));
+}
+
+function mkTab(id,lbl,n,hasX) {
+  const b = document.createElement('button');
+  b.className='tab'+(S.tab===id?' on':'');
+  b.innerHTML=`${esc(lbl)}<span class="tab-n">${fmt(n)}</span>${hasX?'<span class="tab-dot" title="Tiene marcas X SAP"></span>':''}`;
+  b.addEventListener('click',()=>{ S.tab=id; refresh(); });
+  document.getElementById('tabs').appendChild(b);
+}
+
+function renderWarns() {
+  const ws=S.allWarns(), sec=document.getElementById('wsec');
+  document.getElementById('wcnt').textContent=ws.length;
+  if(!ws.length){ sec.classList.add('hidden'); return; }
+  sec.classList.remove('hidden');
+  document.getElementById('wlist').innerHTML=ws.map(w=>`<div class="wi"><strong>${esc(w.archivo)}</strong> · L${w.linea}: ${esc(w.razon)}<br><code>${esc(w.texto)}</code></div>`).join('');
+}
+
+function refresh() {
+  const has = S.files.length > 0;
+  document.getElementById('cbar').classList.toggle('hidden',!has);
+  document.getElementById('twrap').classList.toggle('hidden',!has);
+  document.getElementById('tsec').classList.toggle('hidden',!has);
+  if(!has){
+    document.getElementById('file-list').innerHTML='';
+    document.getElementById('tabs').innerHTML='';
+    document.getElementById('tbody').innerHTML='';
+    document.getElementById('empty').style.display='flex';
+    document.getElementById('dtable').style.display='none';
+    document.getElementById('rowcnt').textContent='';
+    document.getElementById('pag').classList.add('hidden');
+    document.getElementById('xflag-info').style.display='none';
+    updStats(); return;
+  }
+  if(S.tab!=='all' && !S.files.find(f=>f.plantCode===S.tab)) S.tab='all';
+  renderCards(); renderTabs(); renderWarns();
+  const xc = S.allRows().filter(r=>r.conError).length;
+  document.getElementById('xflag-info').style.display = xc>0?'flex':'none';
+  updStats(); R.render();
+}
+
+
+/* ════════════════════════════════════════════════════════
+   FILE PROCESSING
+════════════════════════════════════════════════════════ */
+function processFiles(list) {
+  if (!list || !list.length) return;
+  document.getElementById('loading').classList.remove('hidden');
+  setTimeout(() => {
+    let done = 0; const total = list.length;
+    Array.from(list).forEach(file => {
+      const fr = new FileReader();
+      fr.onload = e => {
+        try {
+          const r = Parser.parse(e.target.result, file.name);
+          if (!r.plantCode) toast(`Sin planta identificada: ${file.name}`,'w');
+          S.add({...r, filename: file.name});
+        } catch(err) { toast(`Error: ${file.name}: ${err.message}`,'e'); console.error(err); }
+        if (++done === total) {
+          document.getElementById('loading').classList.add('hidden');
+          refresh();
+          toast(`${total} archivo${total>1?'s':''} cargado${total>1?'s':''} · ${fmt(S.allRows().length)} registros`);
+        }
+      };
+      fr.onerror = () => {
+        toast(`No se pudo leer: ${file.name}`,'e');
+        if(++done===total){document.getElementById('loading').classList.add('hidden');refresh();}
+      };
+      fr.readAsText(file,'windows-1252');
+    });
+  }, 60);
+}
+
+
+/* ════════════════════════════════════════════════════════
+   SORT
+════════════════════════════════════════════════════════ */
+document.querySelectorAll('#dtable thead th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    S.setSort(th.dataset.col);
+    document.querySelectorAll('#dtable .ths').forEach(s=>s.textContent='');
+    const sp = th.querySelector('.ths'); if(sp) sp.textContent = S.sortAsc?'▲':'▼';
+    R.render();
+  });
+});
+
+/* ════════════════════════════════════════════════════════
+   FILTERS
+════════════════════════════════════════════════════════ */
+['sinput','ftype','togx'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener(el.type==='checkbox'?'change':'input',()=>{S.page=1;R.render();});
+});
+
+/* ════════════════════════════════════════════════════════
+   DRAG & DROP + INPUT
+════════════════════════════════════════════════════════ */
+const da = document.getElementById('drop-area');
+da.addEventListener('dragover', e=>{e.preventDefault();da.classList.add('drag-over');});
+da.addEventListener('dragleave',()=>da.classList.remove('drag-over'));
+da.addEventListener('drop',e=>{e.preventDefault();da.classList.remove('drag-over');processFiles(e.dataTransfer.files);});
+document.getElementById('file-input').addEventListener('change',e=>{processFiles(e.target.files);e.target.value='';});
+
+/* ════════════════════════════════════════════════════════
+   BUTTONS
+════════════════════════════════════════════════════════ */
+document.getElementById('btn-excel').addEventListener('click', exportExcel);
+document.getElementById('btn-csv').addEventListener('click', exportCSV);
+document.getElementById('btn-clear').addEventListener('click', ()=>{ S.clear(); refresh(); toast('Todo limpiado'); });
+</script>
+</body>
+</html>
