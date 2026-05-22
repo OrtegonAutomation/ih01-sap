@@ -881,11 +881,23 @@ function buildHierarchyExport(rows) {
   const baseRows = rows.filter(r => hasFullLevelPath(r));
   const cols = buildLevelColumns();
   const hdr = cols.map(c => c.label);
-  const colWidths = cols.map(c => c.width || 18);
   const data = baseRows.map(r => [
     ...cols.map(c => getColValue(r, c.key))
   ]);
-  return { aoa: [hdr, ...data], colWidths };
+  return { aoa: [hdr, ...data] };
+}
+
+function autoFitCols(aoa, minW = 8, maxW = 44) {
+  if (!aoa.length) return [];
+  const widths = Array.from({ length: aoa[0].length }, () => minW);
+  for (const row of aoa) {
+    for (let i = 0; i < widths.length; i++) {
+      const v = row && row[i] !== undefined && row[i] !== null ? String(row[i]) : '';
+      const w = Math.min(maxW, Math.max(minW, v.length + 2));
+      if (w > widths[i]) widths[i] = w;
+    }
+  }
+  return widths.map(w => ({ wch: w }));
 }
 
 function exportExcel() {
@@ -894,19 +906,19 @@ function exportExcel() {
   const wb = XLSX.utils.book_new();
   let sheetCount = 0;
   files.forEach(f => {
-    const { aoa, colWidths } = buildHierarchyExport(f.rows);
+    const { aoa } = buildHierarchyExport(f.rows);
     if (aoa.length <= 1) return;
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = colWidths.map(w => ({wch:w}));
+    ws['!cols'] = autoFitCols(aoa);
     XLSX.utils.book_append_sheet(wb, ws, safeName(f.plantCode));
     sheetCount++;
   });
   const all = S.allRows();
   if (all.length) {
-    const { aoa, colWidths } = buildHierarchyExport(all);
+    const { aoa } = buildHierarchyExport(all);
     if (aoa.length > 1) {
       const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols'] = colWidths.map(w => ({wch:w}));
+      ws['!cols'] = autoFitCols(aoa);
       XLSX.utils.book_append_sheet(wb, ws, 'Consolidado');
       sheetCount++;
     }
