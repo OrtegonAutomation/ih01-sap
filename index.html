@@ -254,6 +254,12 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
 #dtable tbody tr.rx:hover { background:oklch(94.5% 0.05 68); }
 #dtable tbody td { padding:7px 12px; vertical-align:middle; border-right:1px solid var(--bg-2); max-width:300px; }
 #dtable tbody td:last-child { border-right:none; }
+/* breadcrumb path */
+.ruta-td { max-width:360px; min-width:180px; }
+.bc-wrap { display:flex; flex-wrap:wrap; align-items:center; gap:3px; }
+.bc { font-family:'DM Mono',monospace; font-size:10px; color:var(--text-3); background:var(--bg-2); border-radius:4px; padding:2px 6px; white-space:nowrap; line-height:1.4; }
+.bc:last-child { color:var(--text-2); background:var(--bg-3, oklch(92% 0.015 252)); }
+.bcsep { color:var(--border-2); font-size:10px; line-height:1; user-select:none; }
 .cc  { font-family:'DM Mono',monospace; font-size:11px; color:var(--text-2); }
 .dc  { color:var(--text); line-height:1.4; }
 
@@ -539,7 +545,7 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
     <div id="frow">
       <div class="srch">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3.5 3.5"/></svg>
-        <input type="search" id="sinput" placeholder="Buscar código, descripción, ubicación…">
+        <input type="search" id="sinput" placeholder="Buscar código, descripción, ruta…">
       </div>
       <select class="fsel" id="ftype">
         <option value="">Todos los tipos</option>
@@ -590,16 +596,13 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
       <table id="dtable" style="display:none">
         <thead>
           <tr>
-            <th data-col="conError" style="width:56px;text-align:center">X SAP</th>
-            <th data-col="codigo" style="min-width:132px">Código <span class="ths"></span></th>
-            <th data-col="descripcion" style="min-width:260px">Descripción <span class="ths"></span></th>
-            <th data-col="tipo" style="min-width:116px">Tipo <span class="ths"></span></th>
-            <th data-col="nivel" style="width:60px;text-align:center">Nivel <span class="ths"></span></th>
-            <th data-col="codigoPadre" style="min-width:132px">Cód. Padre <span class="ths"></span></th>
-            <th data-col="ubicTecnica" style="min-width:195px">Ubic. Técnica <span class="ths"></span></th>
-            <th data-col="plantName" style="min-width:140px">Planta <span class="ths"></span></th>
+            <th data-col="ruta" style="min-width:220px">Ruta <span class="ths"></span></th>
+            <th data-col="codigo" style="min-width:128px">Código <span class="ths"></span></th>
+            <th data-col="descripcion" style="min-width:240px">Descripción <span class="ths"></span></th>
+            <th data-col="tipo" style="min-width:110px">Tipo <span class="ths"></span></th>
+            <th data-col="plantName" style="min-width:130px">Planta <span class="ths"></span></th>
             <th data-col="cantidad" style="width:68px;text-align:right">Cant. <span class="ths"></span></th>
-            <th data-col="unidad" style="width:62px">Unidad</th>
+            <th data-col="unidad" style="width:58px">Und.</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -714,7 +717,8 @@ const Parser = (() => {
       const path = [];
       for (let k = 1; k <= d; k++) path.push({ codigo: ps[k]||'', descripcion: psDesc[k]||'' });
 
-      rows.push({ plantCode, plantName, nivel: d, tipo: getType(p.code), codigo: p.code, descripcion: p.descripcion, codigoPadre, ubicTecnica, cantidad: p.cantidad, unidad: p.unidad, conError: xFlag, archivo: filename, path });
+      const ruta = [plantCode, ...path.slice(0, -1).map(e => e.codigo)].join(' › ');
+      rows.push({ plantCode, plantName, nivel: d, tipo: getType(p.code), codigo: p.code, descripcion: p.descripcion, codigoPadre, ubicTecnica, cantidad: p.cantidad, unidad: p.unidad, conError: xFlag, archivo: filename, path, ruta });
     }
     if (!plantName && plantCode) { const m = plantCode.match(/STL-P(\w+)/i); if (m) plantName = m[1]; }
     return { rows, warns, plantCode, plantName, validFrom };
@@ -779,14 +783,14 @@ const R = (() => {
     if (tp) rows = rows.filter(r => r.tipo === tp);
     if (ox) rows = rows.filter(r => r.conError);
     if (q)  rows = rows.filter(r =>
-      [r.codigo, r.descripcion, r.ubicTecnica, r.codigoPadre, r.plantName, r.archivo]
+      [r.codigo, r.descripcion, r.ruta, r.plantName, r.archivo]
         .some(v => v && String(v).toLowerCase().includes(q))
     );
     if (S.sortCol) {
       const asc = S.sortAsc;
       rows = [...rows].sort((a,b) => {
         const va = String(a[S.sortCol]??''), vb = String(b[S.sortCol]??'');
-        if (S.sortCol === 'nivel' || S.sortCol === 'cantidad') {
+        if (S.sortCol === 'cantidad') {
           const na = parseFloat(va) || 0, nb = parseFloat(vb) || 0;
           return asc ? na-nb : nb-na;
         }
@@ -810,19 +814,17 @@ const R = (() => {
       tr.style.cssText = `animation:rowIn .22s ${Math.min(i,50)*7}ms var(--eox) both`;
       const cfg = TYPE_CFG[r.tipo] || { cls:'t-?', ico:'', lbl: r.tipo };
       const ico = cfg.ico ? `<svg width="10" height="10"><use href="${cfg.ico}"/></svg>` : '';
+      const bcHtml = (r.ruta||'').split(' › ')
+        .map(c => `<span class="bc">${hl(c, q)}</span>`)
+        .join('<span class="bcsep">›</span>');
+      const xBadge = r.conError
+        ? `<svg width="10" height="10" viewBox="0 0 14 14" fill="none" style="vertical-align:-1px;margin-right:3px;flex-shrink:0"><path d="M7 1L13 12.5H1L7 1z" stroke="oklch(55% 0.14 60)" stroke-width="1.5" stroke-linejoin="round" fill="oklch(93% 0.09 68)"/><path d="M7 6v3M7 10.5v.5" stroke="oklch(45% 0.12 60)" stroke-width="1.5" stroke-linecap="round"/></svg>` : '';
       tr.innerHTML = `
-        <td style="text-align:center">
-          ${r.conError
-            ? `<span class="xyes"><svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M7 1L13 12.5H1L7 1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="oklch(93% 0.09 68)"/><path d="M7 6v3M7 10.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>X SAP</span>`
-            : `<span style="color:var(--border-2);font-size:12px;font-weight:600">—</span>`}
-        </td>
+        <td class="ruta-td"><div class="bc-wrap">${bcHtml}</div></td>
         <td class="cc">${hl(r.codigo, q)}</td>
-        <td class="dc">${hl(r.descripcion, q)}</td>
+        <td class="dc">${xBadge}${hl(r.descripcion, q)}</td>
         <td><span class="tb ${cfg.cls}">${ico}${cfg.lbl}</span></td>
-        <td style="text-align:center"><span class="lvl">${r.nivel}</span></td>
-        <td class="cc" style="color:var(--text-3)">${hl(r.codigoPadre, q)}</td>
-        <td class="cc">${hl(r.ubicTecnica, q)}</td>
-        <td style="color:var(--text-2)">${hl(r.plantName, q)}</td>
+        <td style="color:var(--text-2);font-size:12px">${hl(r.plantName, q)}</td>
         <td style="text-align:right;font-family:'DM Mono',monospace;font-size:11px">${esc(r.cantidad)}</td>
         <td style="color:var(--text-3)">${esc(r.unidad)}</td>
       `;
@@ -879,25 +881,21 @@ const R = (() => {
 ════════════════════════════════════════════════════════ */
 function safeName(n) { return String(n).replace(/[\/\\?*\[\]]/g,'-').slice(0,31); }
 
-// Build array-of-arrays with one column pair per hierarchy level:
-// [N1 Código, N1 Descripción, N2 Código, N2 Descripción, ..., Tipo, Cantidad, Unidad, Planta, Archivo]
+// Flat export: Ruta (ancestor breadcrumb) + Código + Descripción + Tipo + Cantidad + Unidad + Planta + Archivo
+// Zero blank cells — Ruta always has the full ancestor path, even for nivel=1 rows.
 function buildHierarchyExport(rows) {
-  const maxDepth = rows.reduce((m, r) => Math.max(m, r.nivel||0), 0);
-  const hdr = [];
-  for (let i = 1; i <= maxDepth; i++) hdr.push(`N${i} Código`, `N${i} Descripción`);
-  hdr.push('Tipo', 'Cantidad', 'Unidad', 'Planta', 'Archivo');
-  const colWidths = [];
-  for (let i = 0; i < maxDepth; i++) colWidths.push(16, 44);
-  colWidths.push(18, 10, 8, 30, 36);
-  const data = rows.map(r => {
-    const cells = [];
-    for (let i = 0; i < maxDepth; i++) {
-      const e = r.path && r.path[i];
-      cells.push(e ? e.codigo : '', e ? e.descripcion : '');
-    }
-    cells.push(r.tipo, r.cantidad===''?'':(+r.cantidad||r.cantidad), r.unidad, r.plantName||r.plantCode, r.archivo);
-    return cells;
-  });
+  const hdr = ['Ruta', 'Código', 'Descripción', 'Tipo', 'Cantidad', 'Unidad', 'Planta', 'Archivo'];
+  const colWidths = [90, 20, 56, 18, 10, 8, 32, 36];
+  const data = rows.map(r => [
+    r.ruta || r.plantCode || '',
+    r.codigo,
+    r.descripcion,
+    r.tipo,
+    r.cantidad===''?'':(+r.cantidad||r.cantidad),
+    r.unidad,
+    r.plantName || r.plantCode,
+    r.archivo
+  ]);
   return { aoa: [hdr, ...data], colWidths };
 }
 
