@@ -676,7 +676,8 @@ const Parser = (() => {
   function parse(text, filename) {
     const rows = [], warns = [];
     let plantCode = '', plantName = '', validFrom = '';
-    const ps = []; // parent stack indexed by depth
+    const ps = [];     // parent stack indexed by depth (codigo)
+    const psDesc = []; // parallel description stack
     const lines = text.split(/\r?\n/);
 
     for (let i = 0; i < lines.length; i++) {
@@ -703,13 +704,17 @@ const Parser = (() => {
       const p = parseContent(line.slice(cp).replace(/^\|--+\s*/, ''));
       if (!p || !p.code) continue;
 
-      for (let k = d; k < ps.length; k++) ps[k] = undefined;
+      for (let k = d; k < ps.length; k++) { ps[k] = undefined; psDesc[k] = undefined; }
       const codigoPadre = (d > 1 ? ps[d-1] : ps[0]) || '';
       let ubicTecnica = plantCode;
       for (let k = d-1; k >= 0; k--) { if (ps[k] && /^STL-/i.test(ps[k])) { ubicTecnica = ps[k]; break; } }
-      ps[d] = p.code;
+      ps[d] = p.code; psDesc[d] = p.descripcion;
 
-      rows.push({ plantCode, plantName, nivel: d, tipo: getType(p.code), codigo: p.code, descripcion: p.descripcion, codigoPadre, ubicTecnica, cantidad: p.cantidad, unidad: p.unidad, conError: xFlag, archivo: filename });
+      // Build full hierarchy path for this row (levels 1..d)
+      const path = [];
+      for (let k = 1; k <= d; k++) path.push({ codigo: ps[k]||'', descripcion: psDesc[k]||'' });
+
+      rows.push({ plantCode, plantName, nivel: d, tipo: getType(p.code), codigo: p.code, descripcion: p.descripcion, codigoPadre, ubicTecnica, cantidad: p.cantidad, unidad: p.unidad, conError: xFlag, archivo: filename, path });
     }
     if (!plantName && plantCode) { const m = plantCode.match(/STL-P(\w+)/i); if (m) plantName = m[1]; }
     return { rows, warns, plantCode, plantName, validFrom };
@@ -872,46 +877,59 @@ const R = (() => {
 /* ════════════════════════════════════════════════════════
    EXCEL / CSV
 ════════════════════════════════════════════════════════ */
-const COLS = [
-  { k:'conError',    l:'Marca X (SAP)',    f: v => v?'Sí':'No' },
-  { k:'codigo',      l:'Código' },
-  { k:'descripcion', l:'Descripción' },
-  { k:'tipo',        l:'Tipo' },
-  { k:'nivel',       l:'Nivel',           f: v => +v||v },
-  { k:'codigoPadre', l:'Código Padre' },
-  { k:'ubicTecnica', l:'Ubicación Técnica' },
-  { k:'plantCode',   l:'Cód. Planta' },
-  { k:'plantName',   l:'Planta' },
-  { k:'cantidad',    l:'Cantidad',        f: v => v===''?'': (+v||v) },
-  { k:'unidad',      l:'Unidad' },
-  { k:'archivo',     l:'Archivo Fuente' },
-];
-const CW = [11,18,50,16,7,18,32,14,24,10,8,28];
-
-function toAoa(rows) {
-  return [COLS.map(c=>c.l), ...rows.map(r => COLS.map(c => c.f ? c.f(r[c.k]) : (r[c.k]??'')))];
-}
 function safeName(n) { return String(n).replace(/[\/\\?*\[\]]/g,'-').slice(0,31); }
+
+// Build array-of-arrays with one column pair per hierarchy level:
+// [N1 Código, N1 Descripción, N2 Código, N2 Descripción, ..., Tipo, Cantidad, Unidad, Planta, Archivo]
+function buildHierarchyExport(rows) {
+  const maxDepth = rows.reduce((m, r) => Math.max(m, r.nivel||0), 0);
+  const hdr = [];
+  for (let i = 1; i <= maxDepth; i++) hdr.push(`N${i} Código`, `N${i} Descripción`);
+  hdr.push('Tipo', 'Cantidad', 'Unidad', 'Planta', 'Archivo');
+  const colWidths = [];
+  for (let i = 0; i < maxDepth; i++) colWidths.push(16, 44);
+  colWidths.push(18, 10, 8, 30, 36);
+  const data = rows.map(r => {
+    const cells = [];
+    for (let i = 0; i < maxDepth; i++) {
+      const e = r.path && r.path[i];
+      cells.push(e ? e.codigo : '', e ? e.descripcion : '');
+    }
+    cells.push(r.tipo, r.cantidad===''?'':(+r.cantidad||r.cantidad), r.unidad, r.plantName||r.plantCode, r.archivo);
+    return cells;
+  });
+  return { aoa: [hdr, ...data], colWidths };
+}
 
 function exportExcel() {
   if (typeof XLSX === 'undefined') { toast('SheetJS no disponible','e'); return; }
   const files = S.files; if (!files.length) { toast('No hay datos','w'); return; }
   const wb = XLSX.utils.book_new();
-  files.forEach(f => { const ws = XLSX.utils.aoa_to_sheet(toAoa(f.rows)); ws['!cols']=CW.map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb,ws,safeName(f.plantCode)); });
+  files.forEach(f => {
+    const { aoa, colWidths } = buildHierarchyExport(f.rows);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = colWidths.map(w => ({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, safeName(f.plantCode));
+  });
   const all = S.allRows();
-  if (all.length) { const ws = XLSX.utils.aoa_to_sheet(toAoa(all)); ws['!cols']=CW.map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb,ws,'Consolidado'); }
-  const xr = all.filter(r=>r.conError);
-  if (xr.length) { const ws = XLSX.utils.aoa_to_sheet(toAoa(xr)); ws['!cols']=CW.map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb,ws,'Marcas-X-SAP'); }
+  if (all.length) {
+    const { aoa, colWidths } = buildHierarchyExport(all);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = colWidths.map(w => ({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'Consolidado');
+  }
   XLSX.writeFile(wb, `IH01_${new Date().toISOString().slice(0,10)}.xlsx`);
   toast(`Excel generado · ${files.length} planta(s) · ${fmt(all.length)} registros`);
 }
 
 function exportCSV() {
   const rows = S.tabRows(); if (!rows.length) { toast('No hay datos','w'); return; }
-  const hdr = COLS.map(c=>`"${c.l}"`).join(',');
-  const body = rows.map(r => COLS.map(c=>{ const v=c.f?c.f(r[c.k]):(r[c.k]??''); return `"${String(v).replace(/"/g,'""')}"`;}).join(',')).join('\n');
+  const { aoa } = buildHierarchyExport(rows);
+  const [hdr, ...data] = aoa;
+  const esc = v => `"${String(v===null||v===undefined?'':v).replace(/"/g,'""')}"`;
+  const csv = [hdr.map(esc).join(','), ...data.map(r => r.map(esc).join(','))].join('\n');
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF'+hdr+'\n'+body],{type:'text/csv;charset=utf-8'}));
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
   a.download = `IH01_${S.tab}_${new Date().toISOString().slice(0,10)}.csv`;
   a.click(); URL.revokeObjectURL(a.href);
   toast(`CSV exportado · ${fmt(rows.length)} registros`);
