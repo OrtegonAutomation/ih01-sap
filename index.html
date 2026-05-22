@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/introjs.min.css">
   <style>
 /* ─── TOKENS ───────────────────────────────────────────── */
 :root {
@@ -127,7 +128,29 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
   background:var(--bg-2); border-radius:20px;
   padding:4px 13px; margin-top:12px;
 }
+#tour-launch {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--navy);
+  color: var(--surface);
+  padding: 8px 14px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: var(--sh-sm);
+  transition: transform .12s, opacity .2s;
+}
+#tour-launch:hover { opacity: .9; }
+#tour-launch:active { transform: scale(.98); }
 #file-list { display:flex; flex-direction:column; gap:8px; }
+
+/* Intro.js theming */
+.introjs-tooltip { border-radius: var(--r); border: 1px solid var(--border); box-shadow: var(--sh-lg); }
+.introjs-tooltip-title { font-family: 'DM Sans', sans-serif; font-weight: 700; }
+.introjs-button { border-radius: 6px !important; font-family: 'DM Sans', sans-serif; }
+.introjs-button.introjs-nextbutton { background: var(--navy) !important; color: var(--surface) !important; border: none !important; text-shadow: none !important; }
 
 /* ─── FILE CARDS ──────────────────────────────────────── */
 .fcard {
@@ -464,6 +487,12 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 4v5M8 11.5v.5"/></svg>
         Codificación Windows-1252 · Todos los nodos del árbol se preservan íntegramente
       </div>
+      <div>
+        <button id="tour-launch" type="button">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13V3l12 5-12 5z"/></svg>
+          Tour guiado (demo)
+        </button>
+      </div>
     </div>
     <div id="file-list"></div>
   </div>
@@ -567,6 +596,7 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
 
 <!-- SheetJS CDN -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/intro.min.js"></script>
 <script>
 'use strict';
 
@@ -673,6 +703,81 @@ const Parser = (() => {
   }
   return { parse };
 })();
+
+// Guided-tour demo sample based on STL-PVIE export structure.
+const DEMO_TXT = `Ubicacion tecnica    STL-PVIE                          Valido de       21.05.26
+Denominacion    PLANTA EL VIENTO
+
+  STL-PVIE                                 PLANTA EL VIENTO
+   |
+   |--    STL-PVIE-SDTR                            SISTEMA DE DISTRIBUCION
+   |   |
+   |   |--    STL-PVIE-SDTR-UBTS                       DISTRIBUCION ENERGIA BAJA TENSION
+   |   |   |
+   |   |   |--    STL-PVIE-SDTR-UBTS-UGAB_01               UND TAB DIST ENERGIA 208-120V IN:225A
+   |   |   |   |
+   |   |   |   |--    100012623          SISTEMA ILUM EXPLOSION PROOF KM194
+   |   |   |   |   |
+   |   |   |   |   |--    7500000388         E-LUEL,Luminaria,Led                                         1   UN
+   |   |   |   |   |   |
+   |   |   |   |   |   |---   7700013808         Luminaria,Led,110-240V,SYLVANIA,TOLEDO T L                   1   UN
+`;
+
+async function ensureDemoForTour() {
+  if (S.files.length) return;
+  const parsed = Parser.parse(DEMO_TXT, 'DEMO STL-PVIE.txt');
+  S.add({ ...parsed, filename: 'DEMO STL-PVIE.txt' });
+  refresh();
+  await new Promise(r => setTimeout(r, 120));
+}
+
+async function startGuidedTour() {
+  await ensureDemoForTour();
+  if (typeof introJs === 'undefined') {
+    toast('Tour no disponible en este momento', 'w');
+    return;
+  }
+  const tour = introJs();
+  tour.setOptions({
+    showProgress: true,
+    exitOnOverlayClick: false,
+    nextLabel: 'Siguiente',
+    prevLabel: 'Anterior',
+    doneLabel: 'Listo',
+    steps: [
+      {
+        title: 'Tour IH01',
+        intro: 'Cargamos automaticamente un TXT de ejemplo (STL-PVIE) para mostrar el flujo real de uso.'
+      },
+      {
+        element: document.getElementById('drop-area'),
+        title: '1) Carga de archivos',
+        intro: 'Aqui puedes arrastrar uno o varios TXT de IH01. El parser mantiene el arbol completo.'
+      },
+      {
+        element: document.getElementById('file-list'),
+        title: '2) Resumen por archivo',
+        intro: 'Cada tarjeta muestra planta, archivo y total de registros detectados.'
+      },
+      {
+        element: document.getElementById('tabs'),
+        title: '3) Navegacion',
+        intro: 'Puedes ver consolidado o entrar a cada planta por separado.'
+      },
+      {
+        element: document.getElementById('tsec'),
+        title: '4) Tabla estructurada por niveles',
+        intro: 'Las columnas estan organizadas en Nivel 1..Nivel 6 (codigo/descripcion), sin niveles extra.'
+      },
+      {
+        element: document.getElementById('cbar'),
+        title: '5) Exportacion',
+        intro: 'Desde aqui exportas Excel o CSV con el mismo formato de niveles que ves en pantalla.'
+      }
+    ]
+  });
+  tour.start();
+}
 
 
 /* ════════════════════════════════════════════════════════
@@ -1155,6 +1260,13 @@ document.getElementById('file-input').addEventListener('change',e=>{processFiles
 document.getElementById('btn-excel').addEventListener('click', exportExcel);
 document.getElementById('btn-csv').addEventListener('click', exportCSV);
 document.getElementById('btn-clear').addEventListener('click', ()=>{ S.clear(); refresh(); toast('Todo limpiado'); });
+document.getElementById('tour-launch').addEventListener('click', startGuidedTour);
+
+if (!localStorage.getItem('ih01-tour-v1')) {
+  setTimeout(() => {
+    startGuidedTour().then(() => localStorage.setItem('ih01-tour-v1', '1'));
+  }, 500);
+}
 </script>
 </body>
 </html>
