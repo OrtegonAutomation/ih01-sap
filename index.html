@@ -128,22 +128,6 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
   background:var(--bg-2); border-radius:20px;
   padding:4px 13px; margin-top:12px;
 }
-#tour-launch {
-  margin-top: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--navy);
-  color: var(--surface);
-  padding: 8px 14px;
-  border-radius: var(--r-sm);
-  font-size: 12px;
-  font-weight: 600;
-  box-shadow: var(--sh-sm);
-  transition: transform .12s, opacity .2s;
-}
-#tour-launch:hover { opacity: .9; }
-#tour-launch:active { transform: scale(.98); }
 #file-list { display:flex; flex-direction:column; gap:8px; }
 
 /* Intro.js theming */
@@ -485,13 +469,7 @@ code { font-family: 'DM Mono', monospace; background: var(--bg-2); padding: 1px 
       <div class="drop-sub">o haz clic para seleccionar · Múltiples archivos soportados</div>
       <div class="drop-hint">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 4v5M8 11.5v.5"/></svg>
-        Codificación Windows-1252 · Todos los nodos del árbol se preservan íntegramente
-      </div>
-      <div>
-        <button id="tour-launch" type="button">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13V3l12 5-12 5z"/></svg>
-          Tour guiado (demo)
-        </button>
+        Descarga el IH01 como archivo .txt en texto plano (no convertido en SAP) · Codificación Windows-1252
       </div>
     </div>
     <div id="file-list"></div>
@@ -1260,7 +1238,6 @@ document.getElementById('file-input').addEventListener('change',e=>{processFiles
 document.getElementById('btn-excel').addEventListener('click', exportExcel);
 document.getElementById('btn-csv').addEventListener('click', exportCSV);
 document.getElementById('btn-clear').addEventListener('click', ()=>{ S.clear(); refresh(); toast('Todo limpiado'); });
-document.getElementById('tour-launch').addEventListener('click', startGuidedTour);
 
 if (!localStorage.getItem('ih01-tour-v1')) {
   setTimeout(() => {
