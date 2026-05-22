@@ -762,7 +762,7 @@ async function startGuidedTour() {
       {
         element: document.getElementById('tsec'),
         title: '4) Tabla estructurada por niveles',
-        intro: 'Las columnas estan organizadas en Nivel 1..Nivel 6 (codigo/descripcion), sin niveles extra.'
+        intro: 'Las columnas se crean dinamicamente segun la profundidad real del arbol (nivel por nivel).' 
       },
       {
         element: document.getElementById('cbar'),
@@ -818,30 +818,14 @@ const TYPE_CFG = {
   'Material':          { cls:'t-m', ico:'#si-m', lbl:'Material' },
 };
 
-const LEVEL_LIMIT = 6;
-
-function normalizePathToLevel(row, levelLimit = LEVEL_LIMIT) {
-  const src = Array.isArray(row?.path) ? row.path : [];
-  const out = [];
-  let lastCode = String(src[0]?.codigo || row?.plantCode || row?.codigo || '-').trim();
-  let lastDesc = String(src[0]?.descripcion || row?.plantName || row?.descripcion || lastCode || '-').trim();
-  for (let i = 0; i < levelLimit; i++) {
-    const p = src[i];
-    if (p) {
-      const c = String(p.codigo || '').trim();
-      const d = String(p.descripcion || '').trim();
-      if (c) lastCode = c;
-      if (d) lastDesc = d;
-      else if (c) lastDesc = c;
-    }
-    out.push({ codigo: lastCode || '-', descripcion: lastDesc || lastCode || '-' });
-  }
-  return out;
+function getMaxDepth(rows) {
+  return rows.reduce((m, r) => Math.max(m, (r.path && r.path.length) || r.nivel || 0), 0);
 }
 
-function buildLevelColumns() {
+function buildLevelColumns(rows) {
+  const maxDepth = getMaxDepth(rows);
   const cols = [];
-  for (let i = 1; i <= LEVEL_LIMIT; i++) {
+  for (let i = 1; i <= maxDepth; i++) {
     cols.push({ key: `n${i}c`, label: `Nivel ${i} Código`, width: 128, kind: 'code', level: i });
     cols.push({ key: `n${i}d`, label: `Nivel ${i} Descripción`, width: 240, kind: 'desc', level: i });
   }
@@ -857,8 +841,7 @@ function getColValue(row, colKey) {
   const m = /^n(\d+)([cd])$/.exec(colKey);
   if (m) {
     const level = +m[1] - 1;
-    const np = row.__normPath6 || (row.__normPath6 = normalizePathToLevel(row));
-    const part = np[level];
+    const part = row.path && row.path[level];
     return part ? (m[2] === 'c' ? part.codigo : part.descripcion) : '';
   }
   if (colKey === 'cantidad') return row.cantidad === '' ? '' : (+row.cantidad || row.cantidad);
@@ -962,7 +945,7 @@ const R = (() => {
   }
 
   function render() {
-    const cols = buildLevelColumns();
+    const cols = buildLevelColumns(S.allRows());
     renderHeader(cols, S.sortCol, S.sortAsc);
     const rows = filtered();
     const q = (document.getElementById('sinput').value||'').trim().toLowerCase();
@@ -988,7 +971,7 @@ function safeName(n) { return String(n).replace(/[\/\\?*\[\]]/g,'-').slice(0,31)
 // Structured export: one pair of columns per hierarchy level.
 function buildHierarchyExport(rows) {
   const baseRows = rows;
-  const cols = buildLevelColumns();
+  const cols = buildLevelColumns(baseRows);
   const hdr = cols.map(c => c.label);
   const data = baseRows.map(r => [
     ...cols.map(c => getColValue(r, c.key))
